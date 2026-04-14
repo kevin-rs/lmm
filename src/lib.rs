@@ -14,6 +14,7 @@ pub mod models;
 pub mod operator;
 pub mod perception;
 pub mod physics;
+pub mod predict;
 pub mod prelude;
 pub mod simulation;
 pub mod symbolic;

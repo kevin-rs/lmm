@@ -67,4 +67,18 @@ pub enum Commands {
         #[arg(short, long, default_value = "", allow_hyphen_values = true)]
         residuals: String,
     },
+    Predict {
+        #[arg(short, long, default_value = "-")]
+        input: String,
+        #[arg(short, long, default_value = "The Pharaohs encoded reality in")]
+        text: String,
+        #[arg(short = 'w', long, default_value_t = 32)]
+        window: usize,
+        #[arg(short = 'p', long, default_value_t = 16)]
+        predict_length: usize,
+        #[arg(long, default_value_t = 80)]
+        iterations: usize,
+        #[arg(long, default_value_t = 4)]
+        depth: usize,
+    },
 }

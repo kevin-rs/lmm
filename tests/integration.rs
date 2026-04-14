@@ -2,10 +2,12 @@ use lmm::causal::CausalGraph;
 use lmm::compression::compute_mse;
 use lmm::consciousness::Consciousness;
 use lmm::discovery::SymbolicRegression;
+use lmm::encode::{decode_from_parts, decode_message, encode_text};
 use lmm::equation::Expression;
 use lmm::field::Field;
 use lmm::operator::NeuralOperator;
 use lmm::physics::{HarmonicOscillator, LorenzSystem, SIRModel};
+use lmm::predict::TextPredictor;
 use lmm::simulation::Simulator;
 use lmm::tensor::Tensor;
 use lmm::traits::{Causal, Discoverable, Simulatable};
@@ -166,4 +168,104 @@ fn test_sir_full_pipeline() {
     );
     let peak_i = traj.iter().map(|s| s.data[1]).fold(0.0f64, f64::max);
     assert!(peak_i > 10.0, "Infection should peak above initial");
+}
+
+#[test]
+fn test_encode_decode_roundtrip() {
+    let text = "Hi LMM";
+    let encoded = encode_text(text, 30, 3).unwrap();
+    let decoded = decode_message(&encoded).unwrap();
+    assert_eq!(
+        decoded, text,
+        "Round-trip must recover original text exactly"
+    );
+}
+
+#[test]
+fn test_decode_from_parts_known() {
+    let eq = Expression::Constant(65.0);
+    let decoded = decode_from_parts(&eq, 3, &[0, 1, 2]).unwrap();
+    assert_eq!(decoded.as_bytes(), &[65u8, 66, 67]);
+}
+
+#[test]
+fn test_field_gradient_1d() {
+    let data: Vec<f64> = (0..8).map(|i| (i as f64).powi(2)).collect();
+    let tensor = Tensor::new(vec![8], data).unwrap();
+    let field = Field::new(vec![8], tensor).unwrap();
+    let grad = field.compute_gradient().unwrap();
+    assert!((grad.values.data[4] - 8.0).abs() < 1.0);
+}
+
+#[test]
+fn test_field_laplacian_1d() {
+    let data: Vec<f64> = (0..8).map(|i| (i as f64).powi(2)).collect();
+    let tensor = Tensor::new(vec![8], data).unwrap();
+    let field = Field::new(vec![8], tensor).unwrap();
+    let lap = field.compute_laplacian().unwrap();
+    for v in &lap.values.data[1..7] {
+        assert!((v - 2.0).abs() < 1e-6, "Expected ≈2 got {v}");
+    }
+}
+
+#[test]
+fn test_causal_intervention_pipeline() {
+    let mut graph = CausalGraph::new();
+    let x_id = graph.add_node("x", Some(Expression::Constant(3.0)));
+    let y_id = graph.add_node(
+        "y",
+        Some(Expression::Mul(
+            Box::new(Expression::Constant(2.0)),
+            Box::new(Expression::Variable("x".into())),
+        )),
+    );
+    let z_id = graph.add_node(
+        "z",
+        Some(Expression::Add(
+            Box::new(Expression::Variable("y".into())),
+            Box::new(Expression::Constant(1.0)),
+        )),
+    );
+    graph.add_edge(x_id, y_id, 1.0).unwrap();
+    graph.add_edge(y_id, z_id, 1.0).unwrap();
+    graph.nodes[x_id].observed_value = Some(3.0);
+    let before = graph.forward_pass().unwrap();
+    assert!((before[&y_id] - 6.0).abs() < 1e-10);
+    assert!((before[&z_id] - 7.0).abs() < 1e-10);
+    graph.intervene("x", 10.0).unwrap();
+    let after = graph.forward_pass().unwrap();
+    assert!((after[&y_id] - 20.0).abs() < 1e-10);
+    assert!((after[&z_id] - 21.0).abs() < 1e-10);
+}
+
+#[test]
+fn test_predict_produces_real_words() {
+    let input = "Wise AI built the first LMM framework";
+    let predictor = TextPredictor::new(10, 20, 3);
+    let result = predictor.predict_continuation(input, 30).unwrap();
+    let input_words: std::collections::BTreeSet<&str> = input.split_whitespace().collect();
+    for word in result.continuation.split_whitespace() {
+        assert!(
+            input_words.contains(word),
+            "Predicted '{word}' not in input vocabulary"
+        );
+    }
+}
+
+#[test]
+fn test_predict_has_multiple_words() {
+    let input = "Large Mathematical Models compress the world into equations";
+    let predictor = TextPredictor::new(10, 20, 3);
+    let result = predictor.predict_continuation(input, 40).unwrap();
+    let word_count = result.continuation.split_whitespace().count();
+    assert!(word_count >= 3, "Expected >=3 words, got {word_count}");
+}
+
+#[test]
+fn test_predict_trajectory_equation_has_variable() {
+    let input = "The Pharaohs encoded reality in mathematics";
+    let predictor = TextPredictor::new(8, 20, 3);
+    let result = predictor.predict_continuation(input, 20).unwrap();
+    assert!(result.trajectory_equation.complexity() > 0);
+    assert!(result.rhythm_equation.complexity() > 0);
 }

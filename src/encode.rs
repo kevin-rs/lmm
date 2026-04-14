@@ -50,7 +50,7 @@ pub fn encode_text(text: &str, iterations: usize, depth: usize) -> Result<Encode
 
     let sr = SymbolicRegression::new(depth, iterations)
         .with_variables(vec!["x".into()])
-        .with_population(60);
+        .with_population(100);
 
     let equation = sr.fit(&inputs, &targets)?;
     let mse = compute_mse(&equation, &inputs, &targets);

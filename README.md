@@ -53,13 +53,14 @@ flowchart TD
 
 ### 🔬 Key Capabilities
 
-- 🧬 **Genetic Programming**: real population-based symbolic regression that discovers equations from data.
+- 🧬 **Genetic Programming**: real population-based symbolic regression that seeds templates (linear, quadratic, periodic) and enforces variable-containing equations.
 - 📐 **Symbolic Calculus**: automatic differentiation (chain rule, product rule), constant folding simplification.
 - 🌀 **Physics Suite**: Harmonic, Lorenz, Pendulum, SIR epidemic, N-body gravity: all implement `Simulatable`.
 - 🔢 **Field Calculus**: N-D gradient, Laplacian, divergence, 3-D curl (central differences).
 - 🔗 **Causal Reasoning**: structural causal models, `do(X=v)` interventions, counterfactual queries.
 - 🧩 **Neural Operators**: circular convolution with SGD kernel learning, Fourier spectral operators.
 - 🔤 **Text ↔ Equation**: encode any text into a symbolic equation; decode it back exactly (lossless via residuals).
+- 🔮 **Symbolic Prediction**: LMM-native text continuation via sliding-window GP regression and vocabulary anchoring.
 
 ## 📦 Installation
 
@@ -96,6 +97,7 @@ Subcommands:
   field        Compute gradient or Laplacian of a scalar field
   encode       Encode text into a symbolic mathematical equation
   decode       Decode a symbolic equation back to text
+  predict      Predict text continuation via sliding-window symbolic regression
 ```
 
 ## 📖 Subcommand Reference
@@ -118,7 +120,7 @@ Final state: [-0.41614683639502004, -0.9092974268937748]
 | `-s`, `--step`  | `0.01`  | Integration step size (Δt)  |
 | `-t`, `--steps` | `100`   | Number of integration steps |
 
-### 2. `physics` — Physics Model Simulation
+### 2. `physics`: Physics Model Simulation
 
 Simulate one of four built-in physics models.
 
@@ -163,7 +165,7 @@ lmm discover --iterations 200
 ```
 
 ```sh
-Discovered equation: (0.998899817974317 + (x + x))
+Discovered equation: (x + (1.002465056833142 + x))
 ```
 
 The engine fits data points `(i*0.5, 2*i*0.5 + 1)` by default and finds the
@@ -217,7 +219,7 @@ The SCM is:
 | `-n`, `--intervene-node`  | `x`     | Name of the node to intervene on       |
 | `-v`, `--intervene-value` | `1.0`   | Value to set the node to (do-calculus) |
 
-### 6. `field` — Scalar Field Calculus
+### 6. `field`: Scalar Field Calculus
 
 Computes differential operators on a 1-D scalar field `f(i) = i²`.
 
@@ -250,7 +252,6 @@ equation `f(x) ≈ byte[x]`. Integer residuals `(byte[x] − round(f(x)))` are
 stored alongside the equation, guaranteeing **lossless round-trip recovery**.
 
 ```sh
-# Encode an inline string
 lmm encode --text "The Pharaohs encoded reality in mathematics." \
            --iterations 150 --depth 5
 ```
@@ -261,21 +262,24 @@ Input text  : "The Pharaohs encoded reality in mathematics."
 Characters  : 44
 Running GP symbolic regression (150 iterations, depth 5)…
 
-Equation: 95.09083755315439
+Equation: (95.09620435614187 - cos(x))
 Length: 44 chars
-MSE: 648.6736
-Max residual: 63
+MSE: 646.3067
+Max residual: 64
 
 ━━━ ENCODED DATA ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-{"eq":"95.09083755315439","len":44,"mse":648.673554,"res":[-11,9,6,-63,-15,9,2,19,2,16,9,20,-63,6,15,4,16,5,6,5,-63,19,6,2,13,10,21,26,-63,10,15,-63,14,2,21,9,6,14,2,21,10,4,20,-49]}
+{"eq":"(95.09620435614187 - cos(x))","len":44,"mse":646.306722,"res":[-10,9,5,-64,-16,9,3,20,2,15,8,20,-62,7,15,3,15,5,7,6,-63,18,5,1,13,11,22,26,-64,9,15,-62,15,2,20,8,6,15,3,21,9,3,20,-49]}
 
 ━━━ VERIFY ROUND-TRIP ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Decoded text: "The Pharaohs encoded reality in mathematics."
 Round-trip  : ✅ PERFECT
 
 To decode later, run:
-  lmm decode --equation "95.09083755315439" --length 44 --residuals "-11,9,6,-63,-15,9,2,19,2,16,9,20,-63,6,15,4,16,5,6,5,-63,19,6,2,13,10,21,26,-63,10,15,-63,14,2,21,9,6,14,2,21,10,4,20,-49"
+  lmm decode --equation "(95.09620435614187 - cos(x))" --length 44 --residuals "-10,9,5,-64,-16,9,3,20,2,15,8,20,-62,7,15,3,15,5,7,6,-63,18,5,1,13,11,22,26,-64,9,15,-62,15,2,20,8,6,15,3,21,9,3,20,-49"
 ```
+
+> [!NOTE]
+> GP is stochastic: the discovered equation and residual values will differ across runs. The round-trip recovery is always ✅ PERFECT because the integer residuals correct for any approximation error.
 
 ```sh
 # Encode from a file
@@ -295,14 +299,14 @@ Reconstructs the original text from the equation and residuals printed by `encod
 
 ```sh
 lmm decode \
-  --equation "95.09060040474505" \
+  --equation "(95.09620435614187 - cos(x))" \
   --length 44 \
-  --residuals="-11,9,6,-63,-15,9,2,19,2,16,9,20,-63,6,15,4,16,5,6,5,-63,19,6,2,13,10,21,26,-63,10,15,-63,14,2,21,9,6,14,2,21,10,4,20,-49"
+  --residuals "-10,9,5,-64,-16,9,3,20,2,15,8,20,-62,7,15,3,15,5,7,6,-63,18,5,1,13,11,22,26,-64,9,15,-62,15,2,20,8,6,15,3,21,9,3,20,-49"
 ```
 
 ```sh
 ━━━ LMM DECODER ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Equation : 95.09060040474505
+Equation : (95.09620435614187 - cos(x))
 Length   : 44
 
 ━━━ DECODED TEXT ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -313,10 +317,49 @@ The Pharaohs encoded reality in mathematics.
 | ------------------- | -------- | --------------------------------------------------------------------------- |
 | `-e`, `--equation`  | ✅       | Equation string (from `encode` output)                                      |
 | `-l`, `--length`    | ✅       | Number of characters to recover                                             |
-| `-r`, `--residuals` | ❌       | Comma-separated residuals. Use `--residuals="-3,1,..."` for negative values |
+| `-r`, `--residuals` | ✅       | Comma-separated residuals. Use `--residuals="-3,1,..."` for negative values |
 
 > [!IMPORTANT]
 > Use `--residuals="-3,..."` (with `=`) or quote the argument when residuals contain negative values to prevent the shell from treating them as flags.
+
+### 9. `predict`: Symbolic Text Continuation
+
+Uses a **three-signal symbolic engine** to predict what comes next:
+
+1. **Suffix-pattern matching**: detects phrases from the context that match the current tail of generated text and continues them directly (prevents nonsense).
+1. **2nd-order Markov word-transition matrix**: `(word_a, word_b) → word_c` captures phrase-level grammar; falls back to 1st-order when unseen.
+1. **GP trajectory + rhythm equations**: score word candidates by positional pattern and sentence cadence as tie-breakers.
+
+```sh
+lmm predict --text "Large Mathematical Models compress the world into equations" \
+            --window 16 --predict-length 64
+```
+
+```sh
+━━━ LMM PREDICTOR ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Input text  : "Large Mathematical Models compress the world into equations"
+Window used : 8 words
+Trajectory  : (((x / 1.0038639598569228) / 0.9977330128790676) / 0.9977330128790676)
+Rhythm      : (sin(x) + (sin(x) + 6.380064552234503))
+
+━━━ PREDICTED CONTINUATION ━━━━━━━━━━━━━━━━━━━━━━━
+Large Mathematical Models compress the world into equations compress the world into equations Models compress the world into
+```
+
+> [!NOTE]
+> The suffix-pattern engine detects that "equations" matches position 7 in the context,
+> so the continuation follows the actual documented phrase structure of the input.
+> For longer, richer inputs the Markov bigram transitions dominate, producing novel
+> phrase combinations grounded in the input's grammar.
+
+| Flag                     | Default                           | Description                                      |
+| ------------------------ | --------------------------------- | ------------------------------------------------ |
+| `-i`, `--input`          | `-`                               | Path to a text file (`-` = use `--text`)         |
+| `-t`, `--text`           | `The Pharaohs encoded reality in` | Inline text seed                                 |
+| `-w`, `--window`         | `32`                              | Context window in words                          |
+| `-p`, `--predict-length` | `16`                              | Approximate character budget for continuation    |
+| `--iterations`           | `80`                              | GP evolution iterations for the prediction model |
+| `--depth`                | `4`                               | Maximum expression tree depth                    |
 
 ## 🔬 Architecture Deep Dive
 
@@ -324,17 +367,40 @@ The Pharaohs encoded reality in mathematics.
 
 ```mermaid
 flowchart TD
-    A["Population of Expression trees"]
+    A["Seeded population\n(linear/quadratic/periodic templates + random)"]
     B["Evaluate fitness\nMDL = n·ln(MSE) + complexity·ln(2)"]
-    C["Tournament selection (k=3)"]
+    C["Tournament selection (k=5)"]
     D["Crossover & mutation"]
-    E["Next generation"]
+    E["Reject constant collapse\n(inject fresh random expr 70% of the time)"]
     F{Iterations done?}
-    G["Best expression (simplified)"]
+    G["Best variable-containing expression (simplified)"]
 
     A --> B --> C --> D --> E --> F
     F -- No --> B
     F -- Yes --> G
+```
+
+### Multi-Signal Prediction Engine
+
+```mermaid
+flowchart TD
+    In["Context Window\n(Recent Tokens)"]
+
+    In -->|Train| M["2nd-Order Markov Chain\nTransition probabilities"]
+    In -->|GP Fit| T["Word-ID Trajectory GP\nf(pos) ≈ word_id"]
+    In -->|GP Fit| R["Word-Length Rhythm GP\ng(pos) ≈ length"]
+
+    In --> S["Suffix Pattern Matcher"]
+
+    S -- "Match Found" --> Out["Exact Phrase Continuation"]
+    S -- "No Match" --> Score["Composite Scorer"]
+
+    M --> Score
+    T --> Score
+    R --> Score
+
+    Score -->|Lowest Score| W["Select Best Word from Vocab"]
+    W -->|Update Recency| Out
 ```
 
 ### RK45 Adaptive Integrator

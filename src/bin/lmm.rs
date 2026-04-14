@@ -4,7 +4,7 @@ use lmm::cli::commands::{
     Cli,
     Commands::{
         Causal, Consciousness as CmdConsciousness, Decode, Discover, Encode, Field as CmdField,
-        Physics, Simulate,
+        Physics, Predict, Simulate,
     },
 };
 use lmm::consciousness::Consciousness;
@@ -14,6 +14,7 @@ use lmm::equation::Expression;
 use lmm::error::Result;
 use lmm::field::Field;
 use lmm::physics::{HarmonicOscillator, LorenzSystem, Pendulum, SIRModel};
+use lmm::predict::TextPredictor;
 use lmm::simulation::Simulator;
 use lmm::tensor::Tensor;
 use lmm::traits::{Causal as CausalTrait, Simulatable};
@@ -237,6 +238,33 @@ async fn main() -> Result<()> {
             println!();
             println!("━━━ DECODED TEXT ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
             println!("{}", decoded);
+        }
+        Predict {
+            input,
+            text,
+            window,
+            predict_length,
+            iterations,
+            depth,
+        } => {
+            let source = if input == "-" {
+                text
+            } else {
+                std::fs::read_to_string(&input)
+                    .map_err(|e| lmm::error::LmmError::Perception(e.to_string()))?
+                    .trim_end()
+                    .to_string()
+            };
+            let predictor = TextPredictor::new(window, iterations, depth);
+            let result = predictor.predict_continuation(&source, predict_length)?;
+            println!("━━━ LMM PREDICTOR ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+            println!("Input text  : {:?}", source);
+            println!("Window used : {} words", result.window_used);
+            println!("Trajectory  : {}", result.trajectory_equation);
+            println!("Rhythm      : {}", result.rhythm_equation);
+            println!();
+            println!("━━━ PREDICTED CONTINUATION ━━━━━━━━━━━━━━━━━━━━━━━");
+            println!("{}{}", source, result.continuation);
         }
     }
     Ok(())

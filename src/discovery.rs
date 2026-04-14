@@ -32,6 +32,69 @@ impl SymbolicRegression {
         self
     }
 
+    fn seed_templates<R: Rng>(&self, rng: &mut R) -> Vec<Expression> {
+        let mut templates = Vec::new();
+        for var in &self.variable_names {
+            let x = Expression::Variable(var.clone());
+            let a: f64 = rng.random_range(0.5..=5.0);
+            let b: f64 = rng.random_range(-10.0..=10.0);
+            let c: f64 = rng.random_range(-5.0..=5.0);
+            templates.push(Expression::Add(
+                Box::new(Expression::Mul(
+                    Box::new(Expression::Constant(a)),
+                    Box::new(x.clone()),
+                )),
+                Box::new(Expression::Constant(b)),
+            ));
+            templates.push(Expression::Add(
+                Box::new(Expression::Add(
+                    Box::new(Expression::Mul(
+                        Box::new(Expression::Constant(a)),
+                        Box::new(Expression::Pow(
+                            Box::new(x.clone()),
+                            Box::new(Expression::Constant(2.0)),
+                        )),
+                    )),
+                    Box::new(Expression::Mul(
+                        Box::new(Expression::Constant(b)),
+                        Box::new(x.clone()),
+                    )),
+                )),
+                Box::new(Expression::Constant(c)),
+            ));
+            templates.push(Expression::Add(
+                Box::new(Expression::Mul(
+                    Box::new(Expression::Constant(a)),
+                    Box::new(Expression::Sin(Box::new(Expression::Mul(
+                        Box::new(Expression::Constant(0.1)),
+                        Box::new(x.clone()),
+                    )))),
+                )),
+                Box::new(Expression::Constant(b)),
+            ));
+            templates.push(x);
+        }
+        templates
+    }
+
+    fn has_variables(expr: &Expression) -> bool {
+        match expr {
+            Expression::Variable(_) => true,
+            Expression::Constant(_) => false,
+            Expression::Neg(e)
+            | Expression::Abs(e)
+            | Expression::Sin(e)
+            | Expression::Cos(e)
+            | Expression::Exp(e)
+            | Expression::Log(e) => Self::has_variables(e),
+            Expression::Add(l, r)
+            | Expression::Sub(l, r)
+            | Expression::Mul(l, r)
+            | Expression::Div(l, r)
+            | Expression::Pow(l, r) => Self::has_variables(l) || Self::has_variables(r),
+        }
+    }
+
     fn random_expr<R: Rng>(&self, rng: &mut R, depth: usize) -> Expression {
         if depth >= self.max_depth || (depth > 0 && rng.random_bool(0.4)) {
             return self.random_leaf(rng);
@@ -182,12 +245,23 @@ impl SymbolicRegression {
         }
 
         let mut rng = rand::rng();
-        let mut population: Vec<Expression> = (0..self.population_size)
-            .map(|_| self.random_expr(&mut rng, 0))
-            .collect();
+        let templates = self.seed_templates(&mut rng);
+        let mut population: Vec<Expression> = templates;
+        while population.len() < self.population_size {
+            population.push(self.random_expr(&mut rng, 0));
+        }
 
-        let mut best_expr = population[0].clone();
-        let mut best_score = f64::INFINITY;
+        let has_vars = !self.variable_names.is_empty();
+        let initial_candidate = population
+            .iter()
+            .find(|e| !has_vars || Self::has_variables(e))
+            .cloned()
+            .unwrap_or_else(|| population[0].clone());
+        let mut best_expr = initial_candidate.clone();
+        let mut best_score = {
+            let s = mdl_score(&initial_candidate, inputs, targets);
+            if s.is_finite() { s } else { f64::MAX }
+        };
 
         for _ in 0..self.iterations {
             let fitnesses: Vec<f64> = population
@@ -203,7 +277,7 @@ impl SymbolicRegression {
                 .collect();
 
             for (i, &score) in fitnesses.iter().enumerate() {
-                if score < best_score {
+                if score < best_score && (!has_vars || Self::has_variables(&population[i])) {
                     best_score = score;
                     best_expr = population[i].clone();
                 }
@@ -211,18 +285,23 @@ impl SymbolicRegression {
 
             let mut new_pop = vec![best_expr.clone()];
             while new_pop.len() < self.population_size {
-                let parent_a = Self::tournament_select(&population, &fitnesses, &mut rng, 3);
+                let parent_a = Self::tournament_select(&population, &fitnesses, &mut rng, 5);
                 let op: u8 = rng.random_range(0..3);
                 let child = match op {
                     0 => {
                         let parent_b =
-                            Self::tournament_select(&population, &fitnesses, &mut rng, 3);
+                            Self::tournament_select(&population, &fitnesses, &mut rng, 5);
                         self.crossover(parent_a, parent_b, &mut rng)
                     }
                     1 => self.mutate(parent_a, &mut rng),
                     _ => parent_a.clone(),
                 };
-                new_pop.push(child.simplify());
+                let simplified = child.simplify();
+                if has_vars && !Self::has_variables(&simplified) && rng.random_bool(0.7) {
+                    new_pop.push(self.random_expr(&mut rng, 0));
+                } else {
+                    new_pop.push(simplified);
+                }
             }
             population = new_pop;
         }
