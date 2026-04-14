@@ -1,11 +1,14 @@
+use lmm::causal::CausalGraph;
+use lmm::compression::compute_mse;
 use lmm::consciousness::Consciousness;
 use lmm::discovery::SymbolicRegression;
-use lmm::equation::Expression::{Add, Constant, Variable};
+use lmm::equation::Expression;
 use lmm::field::Field;
 use lmm::operator::NeuralOperator;
+use lmm::physics::{HarmonicOscillator, LorenzSystem, SIRModel};
 use lmm::simulation::Simulator;
 use lmm::tensor::Tensor;
-use lmm::traits::{Discoverable, Simulatable};
+use lmm::traits::{Causal, Discoverable, Simulatable};
 use lmm::world::WorldModel;
 use std::collections::HashMap;
 
@@ -15,74 +18,152 @@ fn test_tensor_math() {
     let t2 = Tensor::new(vec![2], vec![3.0, 4.0]).unwrap();
     let sum = (&t1 + &t2).unwrap();
     assert_eq!(sum.data, vec![4.0, 6.0]);
-}
-
-struct HarmonicOscillator;
-
-impl Simulatable for HarmonicOscillator {
-    fn state(&self) -> &Tensor {
-        unimplemented!()
-    }
-
-    fn evaluate_derivatives(&self, state: &Tensor) -> lmm::error::Result<Tensor> {
-        let x = state.data[0];
-        let v = state.data[1];
-        Tensor::new(vec![2], vec![v, -x])
-    }
+    let diff = (&t2 - &t1).unwrap();
+    assert_eq!(diff.data, vec![2.0, 2.0]);
 }
 
 #[test]
-fn test_simulation() {
+fn test_simulation_rk4() {
+    let osc = HarmonicOscillator::new(1.0, 1.0, 0.0).unwrap();
     let sim = Simulator { step_size: 0.01 };
-    let model = HarmonicOscillator;
-    let initial = Tensor::new(vec![2], vec![1.0, 0.0]).unwrap();
-    let s1 = sim.rk4_step(&model, &initial).unwrap();
+    let s1 = sim.rk4_step(&osc, osc.state()).unwrap();
     assert!((s1.data[0] - 0.99995).abs() < 1e-4);
 }
 
 #[test]
+fn test_simulate_trajectory() {
+    let osc = HarmonicOscillator::new(1.0, 1.0, 0.0).unwrap();
+    let sim = Simulator { step_size: 0.01 };
+    let traj = sim.simulate_trajectory(&osc, osc.state(), 100).unwrap();
+    assert_eq!(traj.len(), 101);
+}
+
+#[test]
 fn test_equation_evaluation() {
-    let eq = Add(Box::new(Variable("x".into())), Box::new(Constant(2.0)));
+    let eq = Expression::Add(
+        Box::new(Expression::Variable("x".into())),
+        Box::new(Expression::Constant(2.0)),
+    );
     let mut vars = HashMap::new();
     vars.insert("x".into(), 5.0);
-    let res = eq.evaluate(&vars).unwrap();
-    assert_eq!(res, 7.0);
+    assert_eq!(eq.evaluate(&vars).unwrap(), 7.0);
 }
 
 #[test]
-fn test_symbolic_regression() {
-    let eq = SymbolicRegression::discover(&[]).unwrap();
-    assert!(eq.complexity() > 0);
+fn test_equation_symbolic_diff_and_simplify() {
+    let eq = Expression::Mul(
+        Box::new(Expression::Constant(3.0)),
+        Box::new(Expression::Variable("x".into())),
+    );
+    let d = eq.symbolic_diff("x").simplify();
+    let mut vars = HashMap::new();
+    vars.insert("x".into(), 99.0);
+    assert!((d.evaluate(&vars).unwrap() - 3.0).abs() < 1e-10);
 }
 
 #[test]
-fn test_neural_operator() {
+fn test_symbolic_regression_pipeline() {
+    let inputs: Vec<Vec<f64>> = (0..12).map(|i| vec![i as f64]).collect();
+    let targets: Vec<f64> = (0..12).map(|i| 3.0 * i as f64).collect();
+    let sr = SymbolicRegression::new(3, 30).with_variables(vec!["x".into()]);
+    let expr = sr.fit(&inputs, &targets).unwrap();
+    let mse = compute_mse(&expr, &inputs, &targets);
+    let mean_y = targets.iter().sum::<f64>() / targets.len() as f64;
+    let baseline =
+        targets.iter().map(|&y| (y - mean_y).powi(2)).sum::<f64>() / targets.len() as f64;
+    assert!(
+        mse < baseline,
+        "GP must beat constant baseline: mse={mse:.2}, baseline={baseline:.2}"
+    );
+}
+
+#[test]
+fn test_discover_trait() {
+    let data: Vec<Tensor> = (0..6).map(|i| Tensor::from_vec(vec![i as f64])).collect();
+    let targets: Vec<f64> = (0..6).map(|i| i as f64).collect();
+    let expr = SymbolicRegression::discover(&data, &targets).unwrap();
+    assert!(expr.complexity() > 0);
+}
+
+#[test]
+fn test_neural_operator_identity() {
+    let mut kw = vec![0.0; 3];
+    kw[1] = 1.0;
+    let op = NeuralOperator { kernel_weights: kw };
     let field = Field::new(vec![3], Tensor::new(vec![3], vec![1.0, 2.0, 3.0]).unwrap()).unwrap();
-    let op = NeuralOperator {
-        kernel_weights: vec![0.5],
-    };
     let out = op.transform(&field).unwrap();
-    assert_eq!(out.values.data, vec![0.5, 1.0, 1.5]);
+    for (a, b) in out.values.data.iter().zip(field.values.data.iter()) {
+        assert!((a - b).abs() < 1e-10);
+    }
 }
 
 #[test]
-fn test_world_model() {
-    let mut wm = WorldModel {
-        current_state: Tensor::new(vec![1], vec![0.0]).unwrap(),
-    };
-    let a = Tensor::new(vec![1], vec![1.0]).unwrap();
-    let ns = wm.step(&a).unwrap();
-    assert_eq!(ns.data[0], 1.0);
+fn test_world_model_step() {
+    let mut wm = WorldModel::new(Tensor::new(vec![2], vec![0.0, 0.0]).unwrap());
+    let action = Tensor::new(vec![2], vec![1.0, 2.0]).unwrap();
+    let ns = wm.step(&action).unwrap();
+    assert_eq!(ns.data, vec![1.0, 2.0]);
 }
 
 #[test]
-fn test_perception_consciousness() {
-    let mut consc = Consciousness {
-        world_model: WorldModel {
-            current_state: Tensor::new(vec![4], vec![0.0, 0.0, 0.0, 0.0]).unwrap(),
-        },
-    };
-    let input = vec![255, 127, 0, 64];
+fn test_world_model_prediction_error() {
+    let mut wm = WorldModel::new(Tensor::new(vec![2], vec![0.0, 0.0]).unwrap());
+    let predicted = Tensor::new(vec![2], vec![1.0, 1.0]).unwrap();
+    let actual = Tensor::new(vec![2], vec![1.5, 0.5]).unwrap();
+    let err = wm.record_error(&predicted, &actual).unwrap();
+    assert!((err - 0.25).abs() < 1e-10);
+    assert!((wm.mean_prediction_error() - 0.25).abs() < 1e-10);
+}
+
+#[test]
+fn test_consciousness_tick() {
+    let init = Tensor::zeros(vec![4]);
+    let mut consc = Consciousness::new(init, 3, 0.01);
+    let input = vec![255u8, 127, 0, 64];
     let ns = consc.tick(&input).unwrap();
     assert_eq!(ns.shape, vec![4]);
+}
+
+#[test]
+fn test_causal_end_to_end() {
+    let mut g = CausalGraph::new();
+    let x = g.add_node("x", Some(Expression::Constant(4.0)));
+    let y = g.add_node(
+        "y",
+        Some(Expression::Mul(
+            Box::new(Expression::Constant(3.0)),
+            Box::new(Expression::Variable("x".into())),
+        )),
+    );
+    g.add_edge(x, y, 1.0).unwrap();
+    let vals = g.forward_pass().unwrap();
+    assert!((vals[&y] - 12.0).abs() < 1e-10);
+    g.intervene("x", 10.0).unwrap();
+    let after = g.forward_pass().unwrap();
+    assert!((after[&y] - 30.0).abs() < 1e-10);
+}
+
+#[test]
+fn test_lorenz_produces_3d_trajectory() {
+    let sys = LorenzSystem::canonical().unwrap();
+    let sim = Simulator { step_size: 0.01 };
+    let traj = sim.simulate_trajectory(&sys, sys.state(), 100).unwrap();
+    assert_eq!(traj.first().unwrap().shape, vec![3]);
+    assert_eq!(traj.last().unwrap().shape, vec![3]);
+}
+
+#[test]
+fn test_sir_full_pipeline() {
+    let sir = SIRModel::new(0.3, 0.1, 990.0, 10.0, 0.0).unwrap();
+    let n0 = sir.total_population();
+    let sim = Simulator { step_size: 0.5 };
+    let traj = sim.simulate_trajectory(&sir, sir.state(), 200).unwrap();
+    let nf: f64 = traj.last().unwrap().data.iter().sum();
+    assert!(
+        (nf - n0).abs() < 20.0,
+        "SIR population drift too large: {}",
+        (nf - n0).abs()
+    );
+    let peak_i = traj.iter().map(|s| s.data[1]).fold(0.0f64, f64::max);
+    assert!(peak_i > 10.0, "Infection should peak above initial");
 }

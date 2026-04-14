@@ -4,7 +4,12 @@ version = "0.0.1"
 edition = "2024"
 authors = ["Mahmoud Harmouch <oss@wiseai.dev>"]
 license = "MIT"
-description = "WIP: A language agnostic framework to reality."
+description = "A language agnostic framework for emulating reality."
+documentation = "https://docs.rs/lmm"
+repository = "https://github.com/wiseaidotdev/lmm"
+homepage = "https://wiseai.dev"
+categories = ["science"]
+keywords = ["asi", "ai", "machine-learning", "llm"]
 
 [dependencies]
 thiserror = "2.0.18"
@@ -18,3 +23,19 @@ tokio = { version = "1.51.1", features = ["full"] }
 [[bin]]
 name = "lmm"
 path = "src/bin/lmm.rs"
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
+
+[badges]
+maintenance = { status = "actively-developed" }
+
+[profile.release]
+opt-level = "z"
+debug = false
+lto = "thin"
+codegen-units = 1
+panic = "abort"
+strip = "symbols"
+incremental = false

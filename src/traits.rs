@@ -1,3 +1,4 @@
+use crate::equation::Expression;
 use crate::error::Result;
 use crate::tensor::Tensor;
 
@@ -7,7 +8,7 @@ pub trait Simulatable {
 }
 
 pub trait Discoverable {
-    fn discover(data: &[Tensor]) -> Result<crate::equation::Expression>;
+    fn discover(data: &[Tensor], targets: &[f64]) -> Result<Expression>;
 }
 
 pub trait Perceivable {
@@ -16,4 +17,16 @@ pub trait Perceivable {
 
 pub trait Predictable {
     fn predict(&self, steps: usize) -> Result<Tensor>;
+}
+
+pub trait Encodable {
+    fn encode(&self, input: &Tensor) -> Result<Tensor>;
+}
+
+pub trait Learnable {
+    fn update(&mut self, grad: &Tensor, lr: f64) -> Result<()>;
+}
+
+pub trait Causal {
+    fn intervene(&mut self, var: &str, value: f64) -> Result<()>;
 }

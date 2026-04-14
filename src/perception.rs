@@ -10,7 +10,7 @@ impl Perceivable for MultiModalPerception {
         if raw_data.is_empty() {
             return Err(Perception("Empty input data".into()));
         }
-        let float_data: Vec<f64> = raw_data.iter().map(|&b| b as f64 / 255.0).collect();
+        let float_data: Vec<f64> = raw_data.iter().map(|&b| f64::from(b) / 255.0).collect();
         Tensor::new(vec![float_data.len()], float_data)
     }
 }
