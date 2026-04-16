@@ -23,6 +23,7 @@ clap = { version = "4.6.0", features = ["derive"], optional = true }
 tokio = { version = "1.51.1", features = ["full"], optional = true }
 tracing-subscriber = { version = "0.3", features = ["fmt", "env-filter"], optional = true }
 tracing-appender = { version = "0.2", optional = true }
+duckduckgo = { version = "0.2.2", optional = true }
 
 [[bin]]
 name = "lmm"
@@ -36,6 +37,10 @@ cli = [
     "tokio",
     "tracing-subscriber",
     "tracing-appender",
+]
+net = [
+    "duckduckgo",
+    "tokio",
 ]
 
 [package.metadata.docs.rs]

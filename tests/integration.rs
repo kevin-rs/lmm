@@ -327,3 +327,106 @@ fn test_essay_generator_has_intro_and_conclusion() {
         "Intro + 2 Body + Conclusion = 4 paragraphs"
     );
 }
+
+#[cfg(feature = "net")]
+mod net_tests {
+    use duckduckgo::response::LiteSearchResult;
+    use lmm::net::{SearchAggregator, corpus_from_results, seed_from_results};
+
+    fn make_result(title: &str, snippet: &str) -> LiteSearchResult {
+        LiteSearchResult {
+            title: title.to_string(),
+            url: "https://wiseai.dev".to_string(),
+            snippet: snippet.to_string(),
+        }
+    }
+
+    #[test]
+    fn test_corpus_joins_title_and_snippet() {
+        let results = vec![
+            make_result(
+                "Rust programming language",
+                "A systems programming language.",
+            ),
+            make_result("Rust safety", "Memory safe without GC."),
+        ];
+        let corpus = corpus_from_results(&results);
+        assert!(corpus.contains("Rust programming language"));
+        assert!(corpus.contains("A systems programming language"));
+        assert!(corpus.contains("Memory safe without GC"));
+    }
+
+    #[test]
+    fn test_corpus_skips_empty_titles_and_snippets() {
+        let results = vec![
+            make_result("Rust", ""),
+            make_result("", "Some snippet."),
+            make_result("", ""),
+        ];
+        let corpus = corpus_from_results(&results);
+        assert!(corpus.contains("Rust"));
+        assert!(corpus.contains("Some snippet"));
+    }
+
+    #[test]
+    fn test_corpus_from_empty_results_is_empty() {
+        let corpus = corpus_from_results(&[]);
+        assert!(corpus.is_empty());
+    }
+
+    #[test]
+    fn test_corpus_result_separator_is_space_not_dot_dot() {
+        let results = vec![make_result("A", "B"), make_result("C", "D")];
+        let corpus = corpus_from_results(&results);
+        assert!(!corpus.contains(". ."));
+        assert!(corpus.contains("A. B"));
+        assert!(corpus.contains("C. D"));
+    }
+
+    #[test]
+    fn test_corpus_preserves_order() {
+        let results = vec![
+            make_result("First", "alpha"),
+            make_result("Second", "beta"),
+            make_result("Third", "gamma"),
+        ];
+        let corpus = corpus_from_results(&results);
+        let first_pos = corpus.find("First").unwrap();
+        let second_pos = corpus.find("Second").unwrap();
+        let third_pos = corpus.find("Third").unwrap();
+        assert!(first_pos < second_pos && second_pos < third_pos);
+    }
+
+    #[test]
+    fn test_search_aggregator_default_region() {
+        let agg = SearchAggregator::new();
+        assert_eq!(agg.region, "wt-wt");
+    }
+
+    #[test]
+    fn test_search_aggregator_custom_region() {
+        let agg = SearchAggregator::new().with_region("us-en");
+        assert_eq!(agg.region, "us-en");
+    }
+
+    #[test]
+    fn test_seed_includes_query() {
+        let results = vec![make_result("Rust Systems Language", "")];
+        let seed = seed_from_results("rust", &results);
+        assert!(seed.starts_with("rust"));
+    }
+
+    #[test]
+    fn test_seed_filters_stopwords() {
+        let results = vec![make_result("the and for with that", "")];
+        let seed = seed_from_results("query", &results);
+        assert!(!seed.contains(" the "));
+        assert!(!seed.contains(" and "));
+    }
+
+    #[test]
+    fn test_seed_falls_back_to_query_when_no_results() {
+        let seed = seed_from_results("rust programming", &[]);
+        assert_eq!(seed, "rust programming");
+    }
+}

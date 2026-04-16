@@ -1,5 +1,7 @@
 use clap::Parser;
 use lmm::causal::CausalGraph;
+#[cfg(feature = "net")]
+use lmm::cli::commands::Commands::Ask;
 use lmm::cli::commands::{
     Cli,
     Commands::{
@@ -487,6 +489,54 @@ async fn main() -> anyhow::Result<()> {
                 }
                 Err(e) => {
                     error!("  ❌ Essay generation failed: {}", e);
+                }
+            }
+        }
+
+        #[cfg(feature = "net")]
+        Ask {
+            prompt,
+            limit,
+            sentences,
+            region,
+            iterations,
+            depth,
+        } => {
+            banner("Ask · Internet-Aware Knowledge Synthesis", "🌐");
+            info!("  ❓ Prompt : {:?}", prompt);
+            let aggregator = lmm::net::SearchAggregator::new().with_region(&region);
+            divider("DuckDuckGo Results");
+
+            if let Err(e) = aggregator.search_and_display(&prompt, limit).await {
+                error!("  ⚠️  Search display failed: {}", e);
+            }
+
+            let corpus = match aggregator.get_response(&prompt).await {
+                Ok(resp) => lmm::net::corpus_from_response(&resp),
+                Err(_) => String::new(),
+            };
+
+            let final_corpus = if corpus.trim().is_empty() {
+                let lite_results = aggregator.fetch(&prompt, limit).await.unwrap_or_default();
+                lmm::net::corpus_from_results(&lite_results)
+            } else {
+                corpus
+            };
+
+            info!("");
+            divider("LMM Response");
+
+            if final_corpus.trim().is_empty() {
+                error!("  ❌ No extractable content from search results.");
+            } else {
+                let summarizer = TextSummarizer::new(sentences, iterations, depth);
+                match summarizer.summarize(&final_corpus) {
+                    Ok(summary) => {
+                        for sentence in &summary {
+                            info!("  {}", sentence);
+                        }
+                    }
+                    Err(e) => error!("  ❌ Summarization failed: {}", e),
                 }
             }
         }
