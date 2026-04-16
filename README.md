@@ -25,7 +25,7 @@ The following is a proof-of-concept demonstration of the predictive engine gener
 
 <video src="https://github.com/user-attachments/assets/f20ed16f-d90e-4983-bc47-0de2ce5c5a4f"></video>
 
-This engine supports a complete suite of text-generation CLI commands, including `summarize`, `sentence`, `paragraph`, and `essay`, enabling sophisticated multi-paragraph construction driven entirely by mathematics.
+This engine supports a complete suite of text-generation CLI commands, including `summarize`, `sentence`, `paragraph`, `essay`, and `ask` enabling sophisticated multi-paragraph construction driven entirely by mathematics.
 
 <video src="https://github.com/user-attachments/assets/680d4ef4-bab1-47d4-84e8-86a11aa93294"></video>
 
@@ -34,6 +34,8 @@ This engine supports a complete suite of text-generation CLI commands, including
 <video src="https://github.com/user-attachments/assets/06ef5c15-7743-4d62-908f-52d22288de76"></video>
 
 <video src="https://github.com/user-attachments/assets/3b4bba24-012b-487b-98c8-91e61336cead"></video>
+
+<video src="https://github.com/user-attachments/assets/fc1d0adc-e2c3-421a-b6b6-4b21dcf3af06"></video>
 
 ## 🧠 Framework Overview
 
@@ -85,7 +87,7 @@ flowchart TD
 ```sh
 git clone https://github.com/wiseaidotdev/lmm
 cd lmm
-cargo build --release
+cargo build --release --all-features
 ```
 
 The binary is at `./target/release/lmm`.
@@ -98,6 +100,17 @@ cargo install lmm --all-features
 
 > [!NOTE]
 > Requires Rust 1.86+. Install via [rustup](https://rustup.rs).
+
+> [!TIP]
+> To enable internet-aware commands (`ask`), install with the `net` feature:
+>
+> ```sh
+> cargo install lmm --features cli,net
+> # or
+> cargo install lmm --all-features
+> ```
+>
+> Or build from source: `cargo build --release --features cli,net`
 
 ## 🚀 CLI Usage
 
@@ -130,6 +143,7 @@ Commands:
   sentence       Generate a single structural sentence
   paragraph      Generate a cohesive paragraph from a seed
   essay          Structure a full essay with intro and conclusion
+  ask            Ask a question and get an equation-scored answer from the web
   help           Print this message or the help of the given subcommand(s)
 
 Options:
@@ -515,6 +529,62 @@ lmm essay --text 'Symmetry and the deeper patterns of physics' --paragraphs 2 --
 | `-t`, `--text`       | `...`   | Topic or title seed for the essay     |
 | `-n`, `--paragraphs` | `2`     | Number of body paragraphs to generate |
 | `-s`, `--sentences`  | `3`     | Number of sentences per paragraph     |
+
+### 14. `ask`: Internet-Aware Knowledge Synthesis _(requires `net` feature)_
+
+Searches the internet via DuckDuckGo Lite, aggregates the result snippets into a single text corpus, then applies the LMM's GP-scored equation engine to extract and compose the most mathematically significant sentences into a coherent response.
+
+```sh
+lmm ask --prompt "What is the Rust programming language?" --limit 5 --sentences 3
+```
+
+```sh
+╔══════════════════════════════════════════════════════╗
+║  🌐  Ask · Internet-Aware Knowledge Synthesis        ║
+╚══════════════════════════════════════════════════════╝
+
+  ❓ Prompt : "What is the Rust programming language?"
+
+-- DuckDuckGo Results ------------------------
+Rust (programming language)
+Abstract: Rust is a general-purpose programming language. It is noted for its emphasis on performance, type safety, concurrency, and memory safety. Rust supports multiple programming paradigms. It was influenced by ideas from functional programming, including immutability, higher-order functions, algebraic data types, and pattern matching. It also supports object-oriented programming via structs, enums, traits, and methods. Rust is noted for enforcing memory safety without a conventional garbage collector; instead, memory safety errors and data races are prevented by the "borrow checker", which tracks the object lifetime of references at compile time. Software developer Graydon Hoare created Rust in 2006 while working at Mozilla, which officially sponsored the project in 2009. The first stable release, Rust 1.0, was published in May 2015.
+Abstract Source: Wikipedia
+Abstract URL: https://en.wikipedia.org/wiki/Rust_(programming_language)
+Image URL: https://duckduckgo.com/i/832f249b21809a13.png
+1. Rust (programming language) Category
+URL: https://duckduckgo.com/c/Rust_(programming_language)?kp=%2D2
+--------------------------------------------
+2. History of programming languages - The history of programming languages spans from documentation of early mechanical computers to modern tools for software development. Early programming languages were highly specialized, relying on mathematical notation and similarly obscure syntax.
+URL: https://duckduckgo.com/History_of_programming_languages?kp=%2D2
+--------------------------------------------
+3. Outline of the Rust programming language - The following outline is provided as an overview of and topical guide to Rust: Rust is a multi-paradigm programming language emphasizing performance, memory safety, and concurrency.
+URL: https://duckduckgo.com/Outline_of_the_Rust_programming_language?kp=%2D2
+--------------------------------------------
+4. Pattern matching programming languages
+URL: https://duckduckgo.com/c/Pattern_matching_programming_languages?kp=%2D2
+--------------------------------------------
+5. Multi-paradigm programming languages
+URL: https://duckduckgo.com/c/Multi-paradigm_programming_languages?kp=%2D2
+--------------------------------------------
+
+
+-- LMM Response ------------------------------
+  Rust is a general-purpose programming language.
+  Rust supports multiple programming paradigms.
+  Outline of the Rust programming language - The following outline is provided as an overview of and topical guide to Rust: Rust is a multi-paradigm programming language emphasizing performance, memory safety, and concurrency.
+```
+
+> [!NOTE]
+> The `ask` command requires building with `--features cli,net`. No API key is needed — it uses DuckDuckGo Lite (text-only, no JavaScript required).
+
+| Flag                | Default  | Description                                    |
+| ------------------- | -------- | ---------------------------------------------- |
+| `-p`, `--prompt`    | required | The question or search query                   |
+| `-l`, `--limit`     | `5`      | Maximum number of search results to fetch      |
+| `-n`, `--sentences` | `3`      | Number of key sentences to extract             |
+| `--region`          | `wt-wt`  | DuckDuckGo region code (e.g. `us-en`, `uk-en`) |
+| `--iterations`      | `40`     | GP scoring iterations                          |
+| `--depth`           | `3`      | Maximum GP expression depth                    |
 
 ## 🔬 Architecture Deep Dive
 

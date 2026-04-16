@@ -190,4 +190,20 @@ pub enum Commands {
         #[arg(long, default_value_t = 3)]
         depth: usize,
     },
+    #[cfg(feature = "net")]
+    #[command(about = "Ask a question and get an equation-scored answer from the web")]
+    Ask {
+        #[arg(short, long)]
+        prompt: String,
+        #[arg(short, long, default_value_t = 5)]
+        limit: usize,
+        #[arg(short = 'n', long, default_value_t = 3)]
+        sentences: usize,
+        #[arg(long, default_value = "wt-wt")]
+        region: String,
+        #[arg(long, default_value_t = 40)]
+        iterations: usize,
+        #[arg(long, default_value_t = 3)]
+        depth: usize,
+    },
 }

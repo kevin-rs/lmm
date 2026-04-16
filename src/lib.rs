@@ -13,6 +13,8 @@ pub mod error;
 pub mod field;
 pub mod lexicon;
 pub mod models;
+#[cfg(feature = "net")]
+pub mod net;
 pub mod operator;
 pub mod perception;
 pub mod physics;

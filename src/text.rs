@@ -183,18 +183,26 @@ fn offset_by_tone_not<'a>(
 fn split_into_sentences(text: &str) -> Vec<String> {
     let mut sentences: Vec<String> = Vec::new();
     let mut current = String::new();
-    for ch in text.chars() {
+    let chars: Vec<char> = text.chars().collect();
+    for i in 0..chars.len() {
+        let ch = chars[i];
         current.push(ch);
         if ch == '.' || ch == '!' || ch == '?' {
+            let prev_digit = i > 0 && chars[i - 1].is_ascii_digit();
+            let next_digit = i + 1 < chars.len() && chars[i + 1].is_ascii_digit();
+            if ch == '.' && prev_digit && next_digit {
+                continue;
+            }
+
             let s = current.trim().to_string();
-            if s.split_whitespace().count() >= 4 {
+            if s.split_whitespace().count() >= 5 {
                 sentences.push(s);
             }
             current.clear();
         }
     }
     let tail = current.trim().to_string();
-    if tail.split_whitespace().count() >= 4 {
+    if tail.split_whitespace().count() >= 5 {
         sentences.push(tail);
     }
     sentences
@@ -400,9 +408,38 @@ impl TextSummarizer {
             .map(|(i, s)| {
                 let tone = text_tone(s);
                 let tone_score = (tone - global_tone).abs();
-                let len_score = ((s.len() as f64 - avg_len) / avg_len.max(1.0)).abs();
+
+                let len_ratio = s.len() as f64 / avg_len.max(1.0);
+                let len_score = if len_ratio > 3.0 { 0.5 } else { len_ratio };
+
                 let position_score = i as f64 / n as f64;
-                let total = len_score * 2.0 + position_score - tone_score * 0.5;
+
+                let comma_count = s.matches(',').count();
+                let comma_penalty = if comma_count > 3 {
+                    (comma_count as f64 - 3.0) * 1.5
+                } else {
+                    0.0
+                };
+
+                let lower = s.to_lowercase();
+                let has_verb = [
+                    "is ",
+                    "are ",
+                    "was ",
+                    "were ",
+                    "has ",
+                    "have ",
+                    "supports ",
+                    "provides ",
+                    "enables ",
+                    "uses ",
+                ]
+                .iter()
+                .any(|&v| lower.contains(v));
+                let verb_bonus = if has_verb { 0.5 } else { -2.0 };
+
+                let total = len_score * 1.2 + position_score - tone_score * 0.5 - comma_penalty
+                    + verb_bonus;
                 (i, total)
             })
             .collect();
