@@ -17,13 +17,26 @@ thiserror = "2.0.18"
 serde_json = "1.0.149"
 anyhow = "1.0.102"
 rand = "0.10.1"
-clap = { version = "4.6.0", features = ["derive"] }
 serde = { version = "1.0.228", features = ["derive"] }
-tokio = { version = "1.51.1", features = ["full"] }
+tracing = "0.1"
+clap = { version = "4.6.0", features = ["derive"], optional = true }
+tokio = { version = "1.51.1", features = ["full"], optional = true }
+tracing-subscriber = { version = "0.3", features = ["fmt", "env-filter"], optional = true }
+tracing-appender = { version = "0.2", optional = true }
 
 [[bin]]
 name = "lmm"
 path = "src/bin/lmm.rs"
+required-features = ["cli"]
+
+[features]
+default = []
+cli = [
+    "clap",
+    "tokio",
+    "tracing-subscriber",
+    "tracing-appender",
+]
 
 [package.metadata.docs.rs]
 all-features = true

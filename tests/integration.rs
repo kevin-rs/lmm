@@ -10,6 +10,7 @@ use lmm::physics::{HarmonicOscillator, LorenzSystem, SIRModel};
 use lmm::predict::TextPredictor;
 use lmm::simulation::Simulator;
 use lmm::tensor::Tensor;
+use lmm::text::{EssayGenerator, ParagraphGenerator, SentenceGenerator, TextSummarizer};
 use lmm::traits::{Causal, Discoverable, Simulatable};
 use lmm::world::WorldModel;
 use std::collections::HashMap;
@@ -267,4 +268,62 @@ fn test_predict_trajectory_equation_has_variable() {
     let result = predictor.predict_continuation(input, 20).unwrap();
     assert!(result.trajectory_equation.complexity() > 0);
     assert!(result.rhythm_equation.complexity() > 0);
+}
+
+#[test]
+fn test_text_summarizer_outputs_subset() {
+    let input = "Mathematical equations reveal the hidden structure of reality. \
+                 Physical laws govern every observable phenomenon in the universe. \
+                 Symbolic symmetry connects abstract algebra to concrete geometry. \
+                 Entropy describes the irreversible flow of information over time. \
+                 Simulation compresses the dynamics of complex systems into equations.";
+    let summarizer = TextSummarizer::new(2, 20, 3);
+    let summary = summarizer.summarize(input).unwrap();
+    assert_eq!(summary.len(), 2);
+    for s in &summary {
+        assert!(
+            input.contains(s.trim_end_matches('.')),
+            "'{}' not in input",
+            s
+        );
+    }
+}
+
+#[test]
+fn test_sentence_generator_produces_punctuation() {
+    let input = "Mathematical equations reveal the structure of reality";
+    let sentence_gen = SentenceGenerator::new(20, 3);
+    let sentence = sentence_gen.generate(input).unwrap();
+    assert!(!sentence.is_empty());
+    assert!(
+        sentence.ends_with('.') || sentence.ends_with('!') || sentence.ends_with('?'),
+        "Expected punctuation, got: {:?}",
+        sentence
+    );
+    assert!(sentence.split_whitespace().count() >= 4);
+}
+
+#[test]
+fn test_paragraph_generator_produces_multiple_sentences() {
+    let input = "LMM encodes reality";
+    let para_gen = ParagraphGenerator::new(3, 20, 3);
+    let paragraph = para_gen.generate(input).unwrap();
+    let sentence_count = paragraph
+        .split(['.', '!', '?'])
+        .filter(|s| !s.trim().is_empty())
+        .count();
+    assert!(sentence_count >= 2);
+}
+
+#[test]
+fn test_essay_generator_has_intro_and_conclusion() {
+    let input = "Mathematical models and the structure of reality";
+    let essay_gen = EssayGenerator::new(2, 3, 20, 3);
+    let essay = essay_gen.generate(input).unwrap();
+    assert!(!essay.title.is_empty());
+    assert_eq!(
+        essay.paragraphs.len(),
+        4,
+        "Intro + 2 Body + Conclusion = 4 paragraphs"
+    );
 }
