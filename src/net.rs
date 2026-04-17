@@ -47,61 +47,152 @@ impl Default for SearchAggregator {
     }
 }
 
+fn ensure_terminal_punct(text: &str) -> String {
+    let t = text.trim();
+    if t.ends_with('.') || t.ends_with('!') || t.ends_with('?') {
+        t.to_string()
+    } else {
+        format!("{}.", t)
+    }
+}
+
+fn sanitize(text: &str) -> String {
+    text.replace("__###newline###__", " ")
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
+fn is_category_label(text: &str) -> bool {
+    let lower = text.to_lowercase();
+    let word_count = text.split_whitespace().count();
+    if word_count < 5 {
+        return true;
+    }
+    let verb_indicators = [
+        " is ",
+        " are ",
+        " was ",
+        " were ",
+        " has ",
+        " have ",
+        " can ",
+        " will ",
+        " does ",
+        " do ",
+        " provides ",
+        " supports ",
+        " describes ",
+        " represents ",
+        " enables ",
+        " includes ",
+        " spans ",
+        " emphasizing ",
+        " provided ",
+    ];
+    let has_verb = verb_indicators.iter().any(|&v| lower.contains(v));
+    if !has_verb {
+        return true;
+    }
+    let category_patterns = [
+        "programming languages",
+        "software using",
+        "free software",
+        "license",
+        "category",
+    ];
+    category_patterns.iter().any(|&p| lower.contains(p))
+}
+
+fn strip_topic_prefix(text: &str) -> String {
+    if let Some(dash_pos) = text.find(" - ") {
+        let after = text[dash_pos + 3..].trim();
+        if after.split_whitespace().count() >= 5 {
+            return after.to_string();
+        }
+    }
+    text.to_string()
+}
+
 pub fn corpus_from_results(results: &[LiteSearchResult]) -> String {
     results
         .iter()
-        .map(|r| {
+        .filter_map(|r| {
             let mut parts: Vec<String> = Vec::new();
-            if !r.title.is_empty() {
-                let mut title = r.title.trim().to_string();
-                if !title.ends_with('.') && !title.ends_with('!') && !title.ends_with('?') {
-                    title.push('.');
-                }
-                parts.push(title);
+            let title = r.title.trim();
+            if !title.is_empty() && !title.contains('|') && title.split_whitespace().count() >= 3 {
+                parts.push(ensure_terminal_punct(title));
             }
-            if !r.snippet.is_empty() {
-                let mut snippet = r.snippet.trim().to_string();
-                if !snippet.ends_with('.') && !snippet.ends_with('!') && !snippet.ends_with('?') {
-                    snippet.push('.');
-                }
-                parts.push(snippet);
+            let snippet = r.snippet.trim();
+            if !snippet.is_empty()
+                && !snippet.contains('|')
+                && snippet.split_whitespace().count() >= 7
+            {
+                parts.push(ensure_terminal_punct(snippet));
             }
-            parts.join(" ")
+            if parts.is_empty() {
+                None
+            } else {
+                Some(parts.join(" "))
+            }
         })
-        .filter(|s| !s.is_empty())
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
+pub fn corpus_from_results_raw(results: &[LiteSearchResult]) -> String {
+    results
+        .iter()
+        .filter_map(|r| {
+            let mut parts: Vec<String> = Vec::new();
+            let snippet = r.snippet.trim();
+            if !snippet.is_empty() && !snippet.contains('|') {
+                parts.push(ensure_terminal_punct(snippet));
+            }
+            let title = r.title.trim();
+            if !title.is_empty() && !title.contains('|') && parts.is_empty() {
+                parts.push(ensure_terminal_punct(title));
+            }
+            if parts.is_empty() {
+                None
+            } else {
+                Some(parts.join(" "))
+            }
+        })
         .collect::<Vec<_>>()
         .join(" ")
 }
 
 pub fn corpus_from_response(resp: &Response) -> String {
-    let mut parts = Vec::new();
-
-    let mut add_part = |text: &str| {
-        let trimmed = text.trim();
-        if !trimmed.is_empty() {
-            let mut content = trimmed.to_string();
-            if !content.ends_with('.') && !content.ends_with('!') && !content.ends_with('?') {
-                content.push('.');
-            }
-            parts.push(content);
-        }
-    };
+    let mut parts: Vec<String> = Vec::new();
 
     if let Some(abstract_text) = &resp.abstract_text {
-        add_part(abstract_text);
-    }
-    if let Some(answer) = &resp.answer {
-        add_part(answer);
-    }
-    if let Some(definition) = &resp.definition {
-        add_part(definition);
+        let t = sanitize(abstract_text);
+        if !t.is_empty() {
+            parts.push(ensure_terminal_punct(&t));
+        }
     }
 
-    for topic in resp.related_topics.iter().take(10) {
-        if let Some(text) = &topic.text
-            && text.split_whitespace().count() >= 5
-        {
-            add_part(text);
+    if let Some(answer) = &resp.answer {
+        let t = sanitize(answer);
+        if !t.is_empty() {
+            parts.push(ensure_terminal_punct(&t));
+        }
+    }
+
+    if let Some(definition) = &resp.definition {
+        let t = sanitize(definition);
+        if !t.is_empty() {
+            parts.push(ensure_terminal_punct(&t));
+        }
+    }
+
+    for topic in resp.related_topics.iter().take(15) {
+        if let Some(raw_text) = &topic.text {
+            let cleaned = strip_topic_prefix(&sanitize(raw_text));
+            if !is_category_label(&cleaned) {
+                parts.push(ensure_terminal_punct(&cleaned));
+            }
         }
     }
 
@@ -109,28 +200,16 @@ pub fn corpus_from_response(resp: &Response) -> String {
 }
 
 pub fn seed_from_results(query: &str, results: &[LiteSearchResult]) -> String {
+    let stopwords = [
+        "the", "and", "for", "with", "that", "this", "from", "what", "how", "are", "was", "were",
+        "will", "have", "been", "they",
+    ];
     let topic_words: Vec<String> = results
         .iter()
         .flat_map(|r| r.title.split_whitespace().map(str::to_string))
         .filter(|w| {
             let low = w.to_lowercase();
-            w.len() > 3
-                && !matches!(
-                    low.as_str(),
-                    "the"
-                        | "and"
-                        | "for"
-                        | "with"
-                        | "that"
-                        | "this"
-                        | "from"
-                        | "what"
-                        | "how"
-                        | "are"
-                        | "was"
-                        | "were"
-                        | "will"
-                )
+            w.len() > 3 && !stopwords.contains(&low.as_str())
         })
         .take(6)
         .collect();

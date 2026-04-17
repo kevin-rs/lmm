@@ -518,7 +518,12 @@ async fn main() -> anyhow::Result<()> {
 
             let final_corpus = if corpus.trim().is_empty() {
                 let lite_results = aggregator.fetch(&prompt, limit).await.unwrap_or_default();
-                lmm::net::corpus_from_results(&lite_results)
+                let quality = lmm::net::corpus_from_results(&lite_results);
+                if quality.trim().is_empty() {
+                    lmm::net::corpus_from_results_raw(&lite_results)
+                } else {
+                    quality
+                }
             } else {
                 corpus
             };
@@ -530,7 +535,7 @@ async fn main() -> anyhow::Result<()> {
                 error!("  ❌ No extractable content from search results.");
             } else {
                 let summarizer = TextSummarizer::new(sentences, iterations, depth);
-                match summarizer.summarize(&final_corpus) {
+                match summarizer.summarize_with_query(&final_corpus, &prompt) {
                     Ok(summary) => {
                         for sentence in &summary {
                             info!("  {}", sentence);

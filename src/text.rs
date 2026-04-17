@@ -184,16 +184,20 @@ fn split_into_sentences(text: &str) -> Vec<String> {
     let mut sentences: Vec<String> = Vec::new();
     let mut current = String::new();
     let chars: Vec<char> = text.chars().collect();
-    for i in 0..chars.len() {
+    let len = chars.len();
+    for i in 0..len {
         let ch = chars[i];
         current.push(ch);
         if ch == '.' || ch == '!' || ch == '?' {
-            let prev_digit = i > 0 && chars[i - 1].is_ascii_digit();
-            let next_digit = i + 1 < chars.len() && chars[i + 1].is_ascii_digit();
-            if ch == '.' && prev_digit && next_digit {
+            let prev_is_digit = i > 0 && chars[i - 1].is_ascii_digit();
+            let next_is_digit = i + 1 < len && chars[i + 1].is_ascii_digit();
+            if ch == '.' && prev_is_digit && next_is_digit {
                 continue;
             }
-
+            let next_is_lower = i + 1 < len && chars[i + 1].is_ascii_lowercase();
+            if ch == '.' && next_is_lower {
+                continue;
+            }
             let s = current.trim().to_string();
             if s.split_whitespace().count() >= 5 {
                 sentences.push(s);
@@ -359,6 +363,107 @@ fn capitalize(s: &str) -> String {
     }
 }
 
+fn sentence_has_verb(lower: &str) -> bool {
+    let present_tense = [
+        " is ",
+        " are ",
+        " was ",
+        " were ",
+        " has ",
+        " have ",
+        " supports ",
+        " provides ",
+        " enables ",
+        " uses ",
+        " describes ",
+        " represents ",
+        " includes ",
+        " can ",
+        " will ",
+        " does ",
+        " do ",
+        " spans ",
+        " emphasizes ",
+        " creates ",
+        " allows ",
+        " helps ",
+        " makes ",
+        " runs ",
+        " enforces ",
+        " prevents ",
+        " reduces ",
+        " increases ",
+        " remains ",
+        " requires ",
+        " relies ",
+        " acts ",
+        " forms ",
+    ];
+    if present_tense.iter().any(|&v| lower.contains(v)) {
+        return true;
+    }
+    let irregulars = [
+        " built ",
+        " made ",
+        " went ",
+        " came ",
+        " gave ",
+        " took ",
+        " found ",
+        " knew ",
+        " thought ",
+        " brought ",
+        " left ",
+        " became ",
+        " saw ",
+        " led ",
+        " kept ",
+        " held ",
+        " told ",
+        " got ",
+        " set ",
+        " put ",
+        " let ",
+        " cut ",
+        " hit ",
+        " ran ",
+        " stood ",
+        " lost ",
+        " won ",
+        " fell ",
+        " grew ",
+        " bore ",
+        " drew ",
+        " rose ",
+        " wore ",
+        " spoke ",
+        " wrote ",
+        " chose ",
+        " drove ",
+        " began ",
+        " swam ",
+        " flew ",
+        " threw ",
+        " struggled ",
+        " struggle ",
+        " replicate ",
+        " align ",
+    ];
+    if irregulars.iter().any(|&v| lower.contains(v)) {
+        return true;
+    }
+    for word in lower.split_whitespace() {
+        let w = word.trim_matches(|c: char| !c.is_ascii_alphabetic());
+        if w.len() > 4 && w.ends_with("ed") {
+            return true;
+        }
+        if w.len() > 6 && w.ends_with("ing") {
+            return true;
+        }
+    }
+    false
+}
+
 pub struct TextSummarizer {
     pub sentence_count: usize,
     pub iterations: usize,
@@ -375,6 +480,10 @@ impl TextSummarizer {
     }
 
     pub fn summarize(&self, text: &str) -> Result<Vec<String>> {
+        self.summarize_with_query(text, "")
+    }
+
+    pub fn summarize_with_query(&self, text: &str, query: &str) -> Result<Vec<String>> {
         let sentences = split_into_sentences(text);
         if sentences.is_empty() {
             return Err(LmmError::Perception(
@@ -382,80 +491,86 @@ impl TextSummarizer {
             ));
         }
         if sentences.len() <= self.sentence_count {
-            return Ok(sentences);
+            return Ok(deduplicate_sentences(sentences));
         }
 
         let global_tone = text_tone(text);
-
         let avg_len =
             sentences.iter().map(|s| s.len()).sum::<usize>() as f64 / sentences.len() as f64;
-
-        let n = sentences.len();
         let want = self.sentence_count;
 
-        let mut must_include: Vec<usize> = Vec::new();
-        if want >= 1 {
-            must_include.push(0);
-        }
-        if want >= 2 {
-            must_include.push(n - 1);
-        }
+        let query_keywords: Vec<String> = query
+            .split_whitespace()
+            .filter(|w| w.len() > 3)
+            .map(|w| w.to_lowercase())
+            .collect();
 
         let mut scored: Vec<(usize, f64)> = sentences
             .iter()
             .enumerate()
-            .filter(|(i, _)| !must_include.contains(i))
             .map(|(i, s)| {
+                let lower = s.to_lowercase();
                 let tone = text_tone(s);
-                let tone_score = (tone - global_tone).abs();
+                let tone_delta = (tone - global_tone).abs();
 
                 let len_ratio = s.len() as f64 / avg_len.max(1.0);
-                let len_score = if len_ratio > 3.0 { 0.5 } else { len_ratio };
+                let len_score = len_ratio.min(2.5);
 
-                let position_score = i as f64 / n as f64;
+                let early_bonus = if i == 0 { 2.5 } else { 0.0 };
 
                 let comma_count = s.matches(',').count();
                 let comma_penalty = if comma_count > 3 {
-                    (comma_count as f64 - 3.0) * 1.5
+                    (comma_count as f64 - 3.0) * 1.8
                 } else {
                     0.0
                 };
 
-                let lower = s.to_lowercase();
-                let has_verb = [
-                    "is ",
-                    "are ",
-                    "was ",
-                    "were ",
-                    "has ",
-                    "have ",
-                    "supports ",
-                    "provides ",
-                    "enables ",
-                    "uses ",
-                ]
-                .iter()
-                .any(|&v| lower.contains(v));
-                let verb_bonus = if has_verb { 0.5 } else { -2.0 };
+                let has_verb = sentence_has_verb(&lower);
+                let verb_bonus = if has_verb { 1.2 } else { -3.0 };
 
-                let total = len_score * 1.2 + position_score - tone_score * 0.5 - comma_penalty
-                    + verb_bonus;
+                let relevance_bonus: f64 = if query_keywords.is_empty() {
+                    0.0
+                } else {
+                    let matches = query_keywords
+                        .iter()
+                        .filter(|kw| lower.contains(kw.as_str()))
+                        .count();
+                    matches as f64 * 0.8
+                };
+
+                let total = len_score * 1.0 + early_bonus - tone_delta * 0.3 - comma_penalty
+                    + verb_bonus
+                    + relevance_bonus;
                 (i, total)
             })
             .collect();
 
-        scored.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal));
+        scored.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
 
-        let needed_extra = want.saturating_sub(must_include.len());
-        let mut selected: Vec<usize> = must_include;
-        for (i, _) in scored.into_iter().take(needed_extra) {
-            selected.push(i);
-        }
+        let mut selected: Vec<usize> = scored.into_iter().take(want).map(|(i, _)| i).collect();
         selected.sort_unstable();
         selected.dedup();
 
-        Ok(selected.into_iter().map(|i| sentences[i].clone()).collect())
+        let result: Vec<String> =
+            deduplicate_sentences(selected.into_iter().map(|i| sentences[i].clone()).collect());
+        Ok(result)
     }
+}
+
+fn deduplicate_sentences(sentences: Vec<String>) -> Vec<String> {
+    let mut seen: std::collections::HashSet<String> = std::collections::HashSet::new();
+    sentences
+        .into_iter()
+        .filter(|s| {
+            let key = s
+                .split_whitespace()
+                .take(6)
+                .collect::<Vec<_>>()
+                .join(" ")
+                .to_lowercase();
+            seen.insert(key)
+        })
+        .collect()
 }
 
 pub struct ParagraphGenerator {

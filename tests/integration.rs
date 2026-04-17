@@ -345,27 +345,30 @@ mod net_tests {
     fn test_corpus_joins_title_and_snippet() {
         let results = vec![
             make_result(
-                "Rust programming language",
-                "A systems programming language.",
+                "Rust programming language overview",
+                "A systems programming language focused entirely on safety performance.",
             ),
-            make_result("Rust safety", "Memory safe without GC."),
+            make_result(
+                "Rust memory safety features",
+                "Memory safe without a garbage collector or runtime overhead.",
+            ),
         ];
         let corpus = corpus_from_results(&results);
         assert!(corpus.contains("Rust programming language"));
         assert!(corpus.contains("A systems programming language"));
-        assert!(corpus.contains("Memory safe without GC"));
+        assert!(corpus.contains("Memory safe without a garbage collector"));
     }
 
     #[test]
     fn test_corpus_skips_empty_titles_and_snippets() {
         let results = vec![
-            make_result("Rust", ""),
-            make_result("", "Some snippet."),
+            make_result("Rust programming language", ""),
+            make_result("", "Some long snippet describing a topic in detail."),
             make_result("", ""),
         ];
         let corpus = corpus_from_results(&results);
-        assert!(corpus.contains("Rust"));
-        assert!(corpus.contains("Some snippet"));
+        assert!(corpus.contains("Rust programming language"));
+        assert!(corpus.contains("Some long snippet"));
     }
 
     #[test]
@@ -376,19 +379,28 @@ mod net_tests {
 
     #[test]
     fn test_corpus_result_separator_is_space_not_dot_dot() {
-        let results = vec![make_result("A", "B"), make_result("C", "D")];
+        let results = vec![
+            make_result(
+                "Alpha language overview",
+                "Beta is a well known and widely used feature.",
+            ),
+            make_result(
+                "Gamma systems language",
+                "Delta provides memory safety guarantees without runtime cost.",
+            ),
+        ];
         let corpus = corpus_from_results(&results);
         assert!(!corpus.contains(". ."));
-        assert!(corpus.contains("A. B"));
-        assert!(corpus.contains("C. D"));
+        assert!(corpus.contains("Alpha language overview"));
+        assert!(corpus.contains("Beta is a well known"));
     }
 
     #[test]
     fn test_corpus_preserves_order() {
         let results = vec![
-            make_result("First", "alpha"),
-            make_result("Second", "beta"),
-            make_result("Third", "gamma"),
+            make_result("First language feature", "alpha beta gamma delta epsilon"),
+            make_result("Second language feature", "beta gamma delta epsilon zeta"),
+            make_result("Third language feature", "gamma delta epsilon zeta eta"),
         ];
         let corpus = corpus_from_results(&results);
         let first_pos = corpus.find("First").unwrap();
