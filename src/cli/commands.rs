@@ -125,6 +125,10 @@ pub enum Commands {
         depth: usize,
         #[arg(long)]
         dictionary: Option<String>,
+        #[arg(long, default_value_t = false)]
+        stochastic: bool,
+        #[arg(long, default_value_t = 0.5)]
+        probability: f64,
     },
     #[command(about = "Extract key meaning via GP scoring")]
     Summarize {
@@ -142,6 +146,10 @@ pub enum Commands {
         iterations: usize,
         #[arg(long, default_value_t = 3)]
         depth: usize,
+        #[arg(long, default_value_t = false)]
+        stochastic: bool,
+        #[arg(long, default_value_t = 0.5)]
+        probability: f64,
     },
     #[command(about = "Generate a single structural sentence")]
     Sentence {
@@ -153,6 +161,10 @@ pub enum Commands {
         iterations: usize,
         #[arg(long, default_value_t = 3)]
         depth: usize,
+        #[arg(long, default_value_t = false)]
+        stochastic: bool,
+        #[arg(long, default_value_t = 0.5)]
+        probability: f64,
     },
     #[command(about = "Generate a cohesive paragraph from a seed")]
     Paragraph {
@@ -170,6 +182,10 @@ pub enum Commands {
         iterations: usize,
         #[arg(long, default_value_t = 3)]
         depth: usize,
+        #[arg(long, default_value_t = false)]
+        stochastic: bool,
+        #[arg(long, default_value_t = 0.5)]
+        probability: f64,
     },
     #[command(about = "Structure a full essay with intro and conclusion")]
     Essay {
@@ -189,6 +205,10 @@ pub enum Commands {
         iterations: usize,
         #[arg(long, default_value_t = 3)]
         depth: usize,
+        #[arg(long, default_value_t = false)]
+        stochastic: bool,
+        #[arg(long, default_value_t = 0.5)]
+        probability: f64,
     },
     #[cfg(feature = "net")]
     #[command(about = "Ask a question and get an equation-scored answer from the web")]
@@ -205,6 +225,10 @@ pub enum Commands {
         iterations: usize,
         #[arg(long, default_value_t = 3)]
         depth: usize,
+        #[arg(long, default_value_t = false)]
+        stochastic: bool,
+        #[arg(long, default_value_t = 0.5)]
+        probability: f64,
     },
     #[command(about = "Generate an image from text via Spectral Field Synthesis")]
     Imagen {

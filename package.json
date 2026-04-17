@@ -54,6 +54,5 @@
   },
   "engines": {
     "node": ">= 22"
-  },
-  "optionalDependencies": {}
+  }
 }

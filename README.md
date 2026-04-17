@@ -81,6 +81,7 @@ flowchart TD
 - 🧩 **Neural Operators**: circular convolution with SGD kernel learning, Fourier spectral operators.
 - 🔤 **Text ↔ Equation**: encode any text into a symbolic equation; decode it back exactly (lossless via residuals).
 - 🔮 **Symbolic Prediction**: LMM-native text continuation via sliding-window GP regression and vocabulary anchoring.
+- 🎲 **Stochastic Enhancement**: synonym-bank word replacement (`--stochastic`) produces unique output every run while preserving mathematical sentence structure.
 
 ## 📦 Installation
 
@@ -160,6 +161,10 @@ Commands:
   ask            Ask a question and get an equation-scored answer from the web
   imagen         Generate an image from text via Spectral Field Synthesis
   help           Print this message or the help of the given subcommand(s)
+
+Global Stochastic Flags (available on predict, summarize, sentence, paragraph, essay, ask):
+  --stochastic                  Enable synonym-based randomization of output
+  --probability      Replacement rate 0.0 - 1.0 (default: 0.5)
 
 Options:
   -h, --help     Print help
@@ -434,6 +439,8 @@ lmm predict --text "Wise AI built the first LMM" --window 10 --predict-length 80
 | `-p`, `--predict-length` | `16`                              | Approximate character budget for continuation    |
 | `--iterations`           | `80`                              | GP evolution iterations for the prediction model |
 | `--depth`                | `4`                               | Maximum expression tree depth                    |
+| `--stochastic`           | `false`                           | Enable synonym-based output randomization        |
+| `--probability`          | `0.5`                             | Word replacement rate (0.0 = none, 1.0 = all)    |
 
 ### 10. `summarize`: Key Sentence Extraction
 
@@ -460,13 +467,18 @@ lmm summarize --text "The ancient Egyptians built the pyramids using advanced ma
 | ------------------- | ------- | ---------------------------------- |
 | `-t`, `--text`      | `...`   | Input text to summarize            |
 | `-n`, `--sentences` | `2`     | Number of key sentences to extract |
+| `--stochastic`      | `false` | Enable synonym-based randomization |
+| `--probability`     | `0.5`   | Word replacement rate (0.0 - 1.0)  |
 
 ### 11. `sentence`: Single Sentence Generation
 
-Generates a single, structurally elegant sentence inspired by a seed text, using rotating Subject-Verb-Object (SVO) sequence patterns parsed from math tones.
+Generates a single, structurally elegant sentence. Add `--stochastic` to randomize word choices on each run - the mathematical structure stays fixed while synonyms vary.
 
 ```sh
 lmm sentence --text "Mathematics is the language of the universe"
+
+# With stochastic: different output every time
+lmm sentence --text "Mathematics is the language of the universe" --stochastic
 ```
 
 ```sh
@@ -478,7 +490,19 @@ lmm sentence --text "Mathematics is the language of the universe"
 
 -- Generated Sentence ------------------------
   Analysis enables the dynamic meaning of the universe.
+
+# --stochastic run 1:
+  Cognition enables the dynamic significance of the world.
+
+# --stochastic run 2:
+  Purplish facilitates the dynamic meaning of the world.
 ```
+
+| Flag            | Default | Description                                       |
+| --------------- | ------- | ------------------------------------------------- |
+| `-t`, `--text`  | `...`   | Seed topic                                        |
+| `--stochastic`  | `false` | Randomize word synonyms each run                  |
+| `--probability` | `0.5`   | Fraction of eligible words to replace (0.0 - 1.0) |
 
 ### 12. `paragraph`: Cohesive Paragraph Generation
 
@@ -501,10 +525,12 @@ lmm paragraph --text "Equations reveal hidden truths about nature" --sentences 6
   Simulation manifests the continuous symmetry of the truths. The symmetric wavelength connects infinity. Entropy remains the invariant truths underlying knowledge. The entropy of truths connects infinity. In essence, the symmetric integration encodes boundaries. Dimension describes precise reality beneath truths.
 ```
 
-| Flag                | Default | Description                          |
-| ------------------- | ------- | ------------------------------------ |
-| `-t`, `--text`      | `...`   | Seed topic for paragraph generation  |
-| `-n`, `--sentences` | `4`     | Number of sentences in the paragraph |
+| Flag                | Default | Description                                       |
+| ------------------- | ------- | ------------------------------------------------- |
+| `-t`, `--text`      | `...`   | Seed topic for paragraph generation               |
+| `-n`, `--sentences` | `4`     | Number of sentences in the paragraph              |
+| `--stochastic`      | `false` | Randomize word synonyms each run                  |
+| `--probability`     | `0.5`   | Fraction of eligible words to replace (0.0 - 1.0) |
 
 ### 13. `essay`: Full Essay Blueprint
 
@@ -548,11 +574,13 @@ lmm essay --text 'Symmetry and the deeper patterns of physics' --paragraphs 2 --
   Gradient unveils the invariant limits of the symmetry. The invariant computation compresses balance. Divergence is the bounded symmetry of identity. The pattern of symmetry defines matter. Fundamentally, the continuous gradient generates truth. Logic determines axiomatic harmony across symmetry. Recursion determines the axiomatic infinity of the symmetry. The structural entropy illuminates infinity. Entropy are the probabilistic symmetry beneath space. The dimension of symmetry expresses reality. Moreover, the deterministic frequency defines existence. Frequency connects abstract perception of symmetry. Structure encodes the abstract chaos of the symmetry. The elegant integration encodes existence. Integration are the dynamic symmetry within meaning.
 ```
 
-| Flag                 | Default | Description                           |
-| -------------------- | ------- | ------------------------------------- |
-| `-t`, `--text`       | `...`   | Topic or title seed for the essay     |
-| `-n`, `--paragraphs` | `2`     | Number of body paragraphs to generate |
-| `-s`, `--sentences`  | `3`     | Number of sentences per paragraph     |
+| Flag                 | Default | Description                                       |
+| -------------------- | ------- | ------------------------------------------------- |
+| `-t`, `--text`       | `...`   | Topic or title seed for the essay                 |
+| `-n`, `--paragraphs` | `2`     | Number of body paragraphs to generate             |
+| `-s`, `--sentences`  | `3`     | Number of sentences per paragraph                 |
+| `--stochastic`       | `false` | Randomize word synonyms each run                  |
+| `--probability`      | `0.5`   | Fraction of eligible words to replace (0.0 - 1.0) |
 
 ### 14. `ask`: Internet-Aware Knowledge Synthesis _(requires `net` feature)_
 
@@ -601,14 +629,16 @@ URL: https://duckduckgo.com/c/Multi-paradigm_programming_languages?kp=%2D2
 > [!NOTE]
 > The `ask` command requires building with `--features cli,net`. No API key is needed.
 
-| Flag                | Default  | Description                                    |
-| ------------------- | -------- | ---------------------------------------------- |
-| `-p`, `--prompt`    | required | The question or search query                   |
-| `-l`, `--limit`     | `5`      | Maximum number of search results to fetch      |
-| `-n`, `--sentences` | `3`      | Number of key sentences to extract             |
-| `--region`          | `wt-wt`  | DuckDuckGo region code (e.g. `us-en`, `uk-en`) |
-| `--iterations`      | `40`     | GP scoring iterations                          |
-| `--depth`           | `3`      | Maximum GP expression depth                    |
+| Flag                | Default  | Description                                       |
+| ------------------- | -------- | ------------------------------------------------- |
+| `-p`, `--prompt`    | required | The question or search query                      |
+| `-l`, `--limit`     | `5`      | Maximum number of search results to fetch         |
+| `-n`, `--sentences` | `3`      | Number of key sentences to extract                |
+| `--region`          | `wt-wt`  | DuckDuckGo region code (e.g. `us-en`, `uk-en`)    |
+| `--iterations`      | `40`     | GP scoring iterations                             |
+| `--depth`           | `3`      | Maximum GP expression depth                       |
+| `--stochastic`      | `false`  | Randomize word synonyms in the answer             |
+| `--probability`     | `0.5`    | Fraction of eligible words to replace (0.0 - 1.0) |
 
 ### 15. `imagen`: Spectral Field Synthesis Image Generation
 
@@ -685,6 +715,31 @@ flowchart TD
 
     Score -->|Lowest Score| W["Select Best Word from Vocab"]
     W -->|Update Recency| Out
+```
+
+### Stochastic Synonym Enhancement
+
+When `--stochastic` is enabled, the deterministic output is piped through the `StochasticEnhancer` layer, which draws from two synonym sources:
+
+```mermaid
+flowchart TD
+    T["Deterministic Text Output\n(sentence / paragraph / essay / summary)"] --> TOK["Tokenizer\n(split words, strip punctuation)"]
+
+    TOK --> STW{Stop Word?}
+    STW -- Yes --> KEEP["Keep Original Word"]
+    STW -- No --> PROB{"Random(0,1) < probability?"}
+
+    PROB -- No --> KEEP
+    PROB -- Yes --> CUR["Curated Synonym Table\n(100+ scientific / mathematical terms)"]
+
+    CUR -- Found --> SYN["Pick Random Synonym"]
+    CUR -- Not Found --> WL["System Dictionary Fallback\n(/usr/share/dict/words)\ngrouped by word length"]
+    WL -- Found --> SYN
+    WL -- Not Found --> KEEP
+
+    SYN --> CASE["Restore Capitalization\n& Punctuation"]
+    KEEP --> CASE
+    CASE --> OUT["Stochastic Output\n(unique each run)"]
 ```
 
 ### Spectral Field Synthesis Image Generation
