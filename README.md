@@ -167,9 +167,13 @@ Global Stochastic Flags (available on predict, summarize, sentence, paragraph, e
   --probability      Replacement rate 0.0 - 1.0 (default: 0.5)
 
 Options:
+  -v, --verbose  Show detailed output with formatting
   -h, --help     Print help
   -V, --version  Print version
 ```
+
+> [!TIP]
+> By default, all commands cleanly output their raw generated results. Provide the `--verbose` (or `-v`) flag to display full interactive banners, seed information, and boxed separators!
 
 ## 📖 Subcommand Reference
 

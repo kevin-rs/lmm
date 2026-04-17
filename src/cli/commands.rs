@@ -41,6 +41,14 @@ inference, and unified sequence processing features.
 "#
 )]
 pub struct Cli {
+    #[arg(
+        short,
+        long,
+        global = true,
+        help = "Show detailed output with formatting"
+    )]
+    pub verbose: bool,
+
     #[command(subcommand)]
     pub command: Commands,
 }

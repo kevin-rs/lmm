@@ -71,7 +71,12 @@ where
 }
 
 #[cfg(feature = "cli")]
-fn setup_logging() -> anyhow::Result<()> {
+fn setup_logging(verbose: bool) -> anyhow::Result<()> {
+    let console_level = if verbose {
+        filter::LevelFilter::INFO
+    } else {
+        filter::LevelFilter::WARN
+    };
     let file_appender = rolling::daily("logs", "lmm_log");
 
     let console_layer = fmt::Layer::new()
@@ -83,7 +88,7 @@ fn setup_logging() -> anyhow::Result<()> {
         .with_target(false)
         .with_writer(std::io::stdout)
         .event_format(NoLevelFormatter)
-        .with_filter(filter::LevelFilter::INFO);
+        .with_filter(console_level);
 
     let file_layer = fmt::Layer::new()
         .compact()
@@ -171,9 +176,8 @@ fn maybe_enhance(text: &str, stochastic: bool, probability: f64) -> String {
 
 #[cfg(feature = "cli")]
 pub async fn run_cli_entry(args: Vec<String>) -> anyhow::Result<()> {
-    setup_logging()?;
-
     let cli = Cli::parse_from(args);
+    setup_logging(cli.verbose)?;
 
     match cli.command {
         Simulate { step, steps } => {
@@ -186,8 +190,13 @@ pub async fn run_cli_entry(args: Vec<String>) -> anyhow::Result<()> {
                 trajectory.len() - 1,
                 step
             );
-            divider("Final State");
-            info!("  {:?}", trajectory.last().unwrap().data);
+            let final_data = &trajectory.last().unwrap().data;
+            if cli.verbose {
+                divider("Final State");
+                info!("  {:?}", final_data);
+            } else {
+                println!("{:?}", final_data);
+            }
         }
 
         Discover {
@@ -200,8 +209,12 @@ pub async fn run_cli_entry(args: Vec<String>) -> anyhow::Result<()> {
             let inputs: Vec<Vec<f64>> = xs.iter().map(|&x| vec![x]).collect();
             let sr = SymbolicRegression::new(3, iterations).with_variables(vec!["x".into()]);
             let expr = sr.fit(&inputs, &ys)?;
-            divider("Discovered Equation");
-            info!("  f(x) = {}", expr);
+            if cli.verbose {
+                divider("Discovered Equation");
+                info!("  f(x) = {}", expr);
+            } else {
+                println!("{}", expr);
+            }
         }
 
         CmdConsciousness { lookahead } => {
@@ -209,10 +222,14 @@ pub async fn run_cli_entry(args: Vec<String>) -> anyhow::Result<()> {
             let mut consc = Consciousness::new(Tensor::zeros(vec![4]), lookahead, 0.01);
             let input = vec![128u8, 64, 32, 255];
             let state = consc.tick(&input)?;
-            divider("State");
-            info!("  {:?}", state.data);
-            divider("Mean Prediction Error");
-            info!("  {:.6}", consc.mean_prediction_error());
+            if cli.verbose {
+                divider("State");
+                info!("  {:?}", state.data);
+                divider("Mean Prediction Error");
+                info!("  {:.6}", consc.mean_prediction_error());
+            } else {
+                println!("{:?}\n{:.6}", state.data, consc.mean_prediction_error());
+            }
         }
 
         Physics {
@@ -227,22 +244,37 @@ pub async fn run_cli_entry(args: Vec<String>) -> anyhow::Result<()> {
                     let sys = LorenzSystem::canonical()?;
                     let traj = sim.simulate_trajectory(&sys, sys.state(), steps)?;
                     info!("✅ Lorenz: {} steps", traj.len() - 1);
-                    divider("Final xyz");
-                    info!("  {:?}", traj.last().unwrap().data);
+                    let final_data = &traj.last().unwrap().data;
+                    if cli.verbose {
+                        divider("Final xyz");
+                        info!("  {:?}", final_data);
+                    } else {
+                        println!("{:?}", final_data);
+                    }
                 }
                 "pendulum" => {
                     let sys = Pendulum::new(9.81, 1.0, 0.3, 0.0)?;
                     let traj = sim.simulate_trajectory(&sys, sys.state(), steps)?;
                     info!("✅ Pendulum: {} steps", traj.len() - 1);
-                    divider("Final [θ, ω]");
-                    info!("  {:?}", traj.last().unwrap().data);
+                    let final_data = &traj.last().unwrap().data;
+                    if cli.verbose {
+                        divider("Final [θ, ω]");
+                        info!("  {:?}", final_data);
+                    } else {
+                        println!("{:?}", final_data);
+                    }
                 }
                 "sir" => {
                     let sys = SIRModel::new(0.3, 0.1, 990.0, 10.0, 0.0)?;
                     let traj = sim.simulate_trajectory(&sys, sys.state(), steps)?;
                     info!("✅ SIR: {} steps", traj.len() - 1);
-                    divider("Final [S, I, R]");
-                    info!("  {:?}", traj.last().unwrap().data);
+                    let final_data = &traj.last().unwrap().data;
+                    if cli.verbose {
+                        divider("Final [S, I, R]");
+                        info!("  {:?}", final_data);
+                    } else {
+                        println!("{:?}", final_data);
+                    }
                 }
                 _ => {
                     let sys = HarmonicOscillator::new(1.0, 1.0, 0.0)?;
@@ -250,10 +282,14 @@ pub async fn run_cli_entry(args: Vec<String>) -> anyhow::Result<()> {
                     info!("✅ Harmonic: {} steps", traj.len() - 1);
                     let s = traj.last().unwrap();
                     let energy = 0.5 * s.data[1] * s.data[1] + 0.5 * s.data[0] * s.data[0];
-                    divider("Final [x, v]");
-                    info!("  {:?}", s.data);
-                    divider("Final Energy");
-                    info!("  {:.6}", energy);
+                    if cli.verbose {
+                        divider("Final [x, v]");
+                        info!("  {:?}", s.data);
+                        divider("Final Energy");
+                        info!("  {:.6}", energy);
+                    } else {
+                        println!("{:?}\n{:.6}", s.data, energy);
+                    }
                 }
             }
         }
@@ -292,13 +328,22 @@ pub async fn run_cli_entry(args: Vec<String>) -> anyhow::Result<()> {
             );
             graph.intervene(&intervene_node, intervene_value)?;
             let after = graph.forward_pass()?;
-            divider(&format!("After do({}={})", intervene_node, intervene_value));
-            info!(
-                "  x={:?}  y={:?}  z={:?}",
-                after.get(&x_id),
-                after.get(&y_id),
-                after.get(&z_id)
-            );
+            if cli.verbose {
+                divider(&format!("After do({}={})", intervene_node, intervene_value));
+                info!(
+                    "  x={:?}  y={:?}  z={:?}",
+                    after.get(&x_id),
+                    after.get(&y_id),
+                    after.get(&z_id)
+                );
+            } else {
+                println!(
+                    "x={:?} y={:?} z={:?}",
+                    after.get(&x_id),
+                    after.get(&y_id),
+                    after.get(&z_id)
+                );
+            }
         }
 
         CmdField { size, operation } => {
@@ -309,13 +354,21 @@ pub async fn run_cli_entry(args: Vec<String>) -> anyhow::Result<()> {
             match operation.as_str() {
                 "laplacian" => {
                     let lap = field.compute_laplacian()?;
-                    divider("∇² f(x)");
-                    info!("  {:?}", lap.values.data);
+                    if cli.verbose {
+                        divider("∇² f(x)");
+                        info!("  {:?}", lap.values.data);
+                    } else {
+                        println!("{:?}", lap.values.data);
+                    }
                 }
                 _ => {
                     let grad = field.compute_gradient()?;
-                    divider("∇ f(x)");
-                    info!("  {:?}", grad.values.data);
+                    if cli.verbose {
+                        divider("∇ f(x)");
+                        info!("  {:?}", grad.values.data);
+                    } else {
+                        println!("{:?}", grad.values.data);
+                    }
                 }
             }
         }
@@ -331,32 +384,46 @@ pub async fn run_cli_entry(args: Vec<String>) -> anyhow::Result<()> {
             info!("  📝 Input   : {:?}", source);
             info!("  📏 Length  : {} chars", source.len());
             let encoded = encode_text(&source, iterations, depth)?;
-            divider("Equation");
-            info!("  {}", encoded.summary());
-            divider("Encoded Data");
-            info!("  {}", encoded.to_data_string());
-            divider("Round-trip Verify");
             let decoded = decode_message(&encoded)?;
-            let status = if decoded == source {
-                "✅ PERFECT"
+            if cli.verbose {
+                divider("Equation");
+                info!("  {}", encoded.summary());
+                divider("Encoded Data");
+                info!("  {}", encoded.to_data_string());
+                divider("Round-trip Verify");
+                let status = if decoded == source {
+                    "✅ PERFECT"
+                } else {
+                    "⚠️  lossy (residuals correct)"
+                };
+                info!("  {}", status);
+                info!("  Decoded : {:?}", decoded);
+                info!("");
+                info!("  💾 To decode later:");
+                info!(
+                    "     lmm decode --equation {:?} --length {} --residuals {:?}",
+                    encoded.equation.to_string(),
+                    encoded.length,
+                    encoded
+                        .residuals
+                        .iter()
+                        .map(|r| r.to_string())
+                        .collect::<Vec<_>>()
+                        .join(",")
+                );
             } else {
-                "⚠️  lossy (residuals correct)"
-            };
-            info!("  {}", status);
-            info!("  Decoded : {:?}", decoded);
-            info!("");
-            info!("  💾 To decode later:");
-            info!(
-                "     lmm decode --equation {:?} --length {} --residuals {:?}",
-                encoded.equation.to_string(),
-                encoded.length,
-                encoded
-                    .residuals
-                    .iter()
-                    .map(|r| r.to_string())
-                    .collect::<Vec<_>>()
-                    .join(",")
-            );
+                println!(
+                    "{} {} {}",
+                    encoded.equation,
+                    encoded.length,
+                    encoded
+                        .residuals
+                        .iter()
+                        .map(|r| r.to_string())
+                        .collect::<Vec<_>>()
+                        .join(",")
+                );
+            }
         }
 
         Decode {
@@ -378,8 +445,12 @@ pub async fn run_cli_entry(args: Vec<String>) -> anyhow::Result<()> {
                     .collect()
             };
             let decoded = crate::encode::decode_from_parts(&expr, length, &res_vec)?;
-            divider("Decoded Text");
-            info!("  {}", decoded);
+            if cli.verbose {
+                divider("Decoded Text");
+                info!("  {}", decoded);
+            } else {
+                println!("{}", decoded);
+            }
         }
 
         Predict {
@@ -409,12 +480,13 @@ pub async fn run_cli_entry(args: Vec<String>) -> anyhow::Result<()> {
             info!("  🪟 Window    : {} words", result.window_used);
             info!("  📈 Trajectory: {}", result.trajectory_equation);
             info!("  🎵 Rhythm    : {}", result.rhythm_equation);
-            divider("Continuation");
-            info!(
-                "  {}{}",
-                source,
-                maybe_enhance(&result.continuation, stochastic, probability)
-            );
+            let cont = maybe_enhance(&result.continuation, stochastic, probability);
+            if cli.verbose {
+                divider("Continuation");
+                info!("  {}{}", source, cont);
+            } else {
+                println!("{}{}", source, cont);
+            }
         }
 
         Summarize {
@@ -436,13 +508,16 @@ pub async fn run_cli_entry(args: Vec<String>) -> anyhow::Result<()> {
             let summarizer = TextSummarizer::new(sentences, iterations, depth);
             match summarizer.summarize(&source) {
                 Ok(summary) => {
-                    divider("Summary");
+                    if cli.verbose {
+                        divider("Summary");
+                    }
                     for (i, sentence) in summary.iter().enumerate() {
-                        info!(
-                            "  {}. {}",
-                            i + 1,
-                            maybe_enhance(sentence, stochastic, probability)
-                        );
+                        let enhanced = maybe_enhance(sentence, stochastic, probability);
+                        if cli.verbose {
+                            info!("  {}. {}", i + 1, enhanced);
+                        } else {
+                            println!("{}", enhanced);
+                        }
                     }
                 }
                 Err(e) => {
@@ -465,8 +540,13 @@ pub async fn run_cli_entry(args: Vec<String>) -> anyhow::Result<()> {
             let sentence_gen = SentenceGenerator::new(iterations, depth);
             match sentence_gen.generate(&source) {
                 Ok(sentence) => {
-                    divider("Generated Sentence");
-                    info!("  {}", maybe_enhance(&sentence, stochastic, probability));
+                    let enhanced = maybe_enhance(&sentence, stochastic, probability);
+                    if cli.verbose {
+                        divider("Generated Sentence");
+                        info!("  {}", enhanced);
+                    } else {
+                        println!("{}", enhanced);
+                    }
                 }
                 Err(e) => {
                     error!("  ❌ Generation failed: {}", e);
@@ -490,9 +570,14 @@ pub async fn run_cli_entry(args: Vec<String>) -> anyhow::Result<()> {
             let para_gen = ParagraphGenerator::new(sentences, iterations, depth);
             match para_gen.generate(&source) {
                 Ok(paragraph) => {
-                    divider("Generated Paragraph");
-                    info!("");
-                    info!("  {}", maybe_enhance(&paragraph, stochastic, probability));
+                    let enhanced = maybe_enhance(&paragraph, stochastic, probability);
+                    if cli.verbose {
+                        divider("Generated Paragraph");
+                        info!("");
+                        info!("  {}", enhanced);
+                    } else {
+                        println!("{}", enhanced);
+                    }
                 }
                 Err(e) => {
                     error!("  ❌ Generation failed: {}", e);
@@ -520,24 +605,41 @@ pub async fn run_cli_entry(args: Vec<String>) -> anyhow::Result<()> {
             let essay_gen = EssayGenerator::new(paragraphs, sentences, iterations, depth);
             match essay_gen.generate(&source) {
                 Ok(essay) => {
-                    divider("Essay");
-                    info!("");
-                    info!("  ══════════════════════════════════════");
-                    info!("  📖  {}", essay.title);
-                    info!("  ══════════════════════════════════════");
+                    if cli.verbose {
+                        divider("Essay");
+                        info!("");
+                        info!("  ══════════════════════════════════════");
+                        info!("  📖  {}", essay.title);
+                        info!("  ══════════════════════════════════════");
+                    } else {
+                        println!(
+                            "{}
+",
+                            essay.title
+                        );
+                    }
                     let count = essay.paragraphs.len();
                     for (i, para) in essay.paragraphs.iter().enumerate() {
-                        let label = if i == 0 {
-                            "Introduction".to_string()
-                        } else if i == count - 1 {
-                            "Conclusion".to_string()
+                        let enhanced = maybe_enhance(para, stochastic, probability);
+                        if cli.verbose {
+                            let label = if i == 0 {
+                                "Introduction".to_string()
+                            } else if i == count - 1 {
+                                "Conclusion".to_string()
+                            } else {
+                                format!("Body · §{}", i)
+                            };
+                            divider(&label);
+                            info!("");
+                            info!("  {}", enhanced);
+                            info!("");
                         } else {
-                            format!("Body · §{}", i)
-                        };
-                        divider(&label);
-                        info!("");
-                        info!("  {}", maybe_enhance(para, stochastic, probability));
-                        info!("");
+                            println!(
+                                "{}
+",
+                                enhanced
+                            );
+                        }
                     }
                 }
                 Err(e) => {
@@ -593,7 +695,12 @@ pub async fn run_cli_entry(args: Vec<String>) -> anyhow::Result<()> {
                 match summarizer.summarize_with_query(&final_corpus, &prompt) {
                     Ok(summary) => {
                         for sentence in &summary {
-                            info!("  {}", maybe_enhance(sentence, stochastic, probability));
+                            let enhanced = maybe_enhance(sentence, stochastic, probability);
+                            if cli.verbose {
+                                info!("  {}", enhanced);
+                            } else {
+                                println!("{}", enhanced);
+                            }
                         }
                     }
                     Err(e) => error!("  ❌ Summarization failed: {}", e),
@@ -631,7 +738,13 @@ pub async fn run_cli_entry(args: Vec<String>) -> anyhow::Result<()> {
             info!("");
             divider("Rendering");
             match crate::imagen::render(&params) {
-                Ok(path) => info!("  ✅ Saved to: {}", path),
+                Ok(path) => {
+                    if cli.verbose {
+                        info!("  ✅ Saved to: {}", path);
+                    } else {
+                        println!("{}", path);
+                    }
+                }
                 Err(e) => error!("  ❌ Render failed: {}", e),
             }
         }
