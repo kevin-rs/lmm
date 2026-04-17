@@ -1,3 +1,4 @@
 #!/usr/bin/env node
-import { runCli } from "../index.js";
+// @ts-ignore
+const { runCli } = require("../index.js");
 runCli(process.argv.slice(1));

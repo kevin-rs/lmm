@@ -161,6 +161,15 @@ fn divider(label: &str) {
 }
 
 #[cfg(feature = "cli")]
+fn maybe_enhance(text: &str, stochastic: bool, probability: f64) -> String {
+    if stochastic {
+        crate::stochastic::StochasticEnhancer::new(probability).enhance(text)
+    } else {
+        text.to_string()
+    }
+}
+
+#[cfg(feature = "cli")]
 pub async fn run_cli_entry(args: Vec<String>) -> anyhow::Result<()> {
     setup_logging()?;
 
@@ -381,6 +390,8 @@ pub async fn run_cli_entry(args: Vec<String>) -> anyhow::Result<()> {
             iterations,
             depth,
             dictionary,
+            stochastic,
+            probability,
         } => {
             banner("Predict · Symbolic Continuation", "🔮");
             let source = load_source(&input, text)?;
@@ -399,7 +410,11 @@ pub async fn run_cli_entry(args: Vec<String>) -> anyhow::Result<()> {
             info!("  📈 Trajectory: {}", result.trajectory_equation);
             info!("  🎵 Rhythm    : {}", result.rhythm_equation);
             divider("Continuation");
-            info!("  {}{}", source, result.continuation);
+            info!(
+                "  {}{}",
+                source,
+                maybe_enhance(&result.continuation, stochastic, probability)
+            );
         }
 
         Summarize {
@@ -408,6 +423,8 @@ pub async fn run_cli_entry(args: Vec<String>) -> anyhow::Result<()> {
             sentences,
             iterations,
             depth,
+            stochastic,
+            probability,
         } => {
             banner("Summarize · Key Sentence Extraction", "✂️");
             let source = load_source(&input, text)?;
@@ -421,7 +438,11 @@ pub async fn run_cli_entry(args: Vec<String>) -> anyhow::Result<()> {
                 Ok(summary) => {
                     divider("Summary");
                     for (i, sentence) in summary.iter().enumerate() {
-                        info!("  {}. {}", i + 1, sentence);
+                        info!(
+                            "  {}. {}",
+                            i + 1,
+                            maybe_enhance(sentence, stochastic, probability)
+                        );
                     }
                 }
                 Err(e) => {
@@ -435,6 +456,8 @@ pub async fn run_cli_entry(args: Vec<String>) -> anyhow::Result<()> {
             text,
             iterations,
             depth,
+            stochastic,
+            probability,
         } => {
             banner("Sentence · Single Sentence Generation", "✍️");
             let source = load_source(&input, text)?;
@@ -443,7 +466,7 @@ pub async fn run_cli_entry(args: Vec<String>) -> anyhow::Result<()> {
             match sentence_gen.generate(&source) {
                 Ok(sentence) => {
                     divider("Generated Sentence");
-                    info!("  {}", sentence);
+                    info!("  {}", maybe_enhance(&sentence, stochastic, probability));
                 }
                 Err(e) => {
                     error!("  ❌ Generation failed: {}", e);
@@ -457,6 +480,8 @@ pub async fn run_cli_entry(args: Vec<String>) -> anyhow::Result<()> {
             sentences,
             iterations,
             depth,
+            stochastic,
+            probability,
         } => {
             banner("Paragraph · Generate a Paragraph", "📄");
             let source = load_source(&input, text)?;
@@ -467,7 +492,7 @@ pub async fn run_cli_entry(args: Vec<String>) -> anyhow::Result<()> {
                 Ok(paragraph) => {
                     divider("Generated Paragraph");
                     info!("");
-                    info!("  {}", paragraph);
+                    info!("  {}", maybe_enhance(&paragraph, stochastic, probability));
                 }
                 Err(e) => {
                     error!("  ❌ Generation failed: {}", e);
@@ -482,6 +507,8 @@ pub async fn run_cli_entry(args: Vec<String>) -> anyhow::Result<()> {
             sentences,
             iterations,
             depth,
+            stochastic,
+            probability,
         } => {
             banner("Essay · Generate a Full Essay", "📖");
             let source = load_source(&input, text)?;
@@ -509,7 +536,7 @@ pub async fn run_cli_entry(args: Vec<String>) -> anyhow::Result<()> {
                         };
                         divider(&label);
                         info!("");
-                        info!("  {}", para);
+                        info!("  {}", maybe_enhance(para, stochastic, probability));
                         info!("");
                     }
                 }
@@ -527,6 +554,8 @@ pub async fn run_cli_entry(args: Vec<String>) -> anyhow::Result<()> {
             region,
             iterations,
             depth,
+            stochastic,
+            probability,
         } => {
             banner("Ask · Internet-Aware Knowledge Synthesis", "🌐");
             info!("  ❓ Prompt : {:?}", prompt);
@@ -564,7 +593,7 @@ pub async fn run_cli_entry(args: Vec<String>) -> anyhow::Result<()> {
                 match summarizer.summarize_with_query(&final_corpus, &prompt) {
                     Ok(summary) => {
                         for sentence in &summary {
-                            info!("  {}", sentence);
+                            info!("  {}", maybe_enhance(sentence, stochastic, probability));
                         }
                     }
                     Err(e) => error!("  ❌ Summarization failed: {}", e),

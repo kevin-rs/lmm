@@ -22,6 +22,7 @@ pub mod physics;
 pub mod predict;
 pub mod prelude;
 pub mod simulation;
+pub mod stochastic;
 pub mod symbolic;
 pub mod tensor;
 pub mod text;

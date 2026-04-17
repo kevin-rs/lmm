@@ -52,8 +52,8 @@ net = [
     "duckduckgo",
     "tokio",
 ]
-python = ["pyo3", "cli"]
-node = ["napi", "napi-derive", "napi-build", "cli"]
+python = ["pyo3", "cli", "net"]
+node = ["napi", "napi-derive", "napi-build", "cli", "net"]
 
 [package.metadata.docs.rs]
 all-features = true

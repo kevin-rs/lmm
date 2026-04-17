@@ -10,6 +10,16 @@ const FNV_OFFSET_BASIS: u64 = 14695981039346656037;
 const FNV_PRIME: u64 = 1099511628211;
 const PROMPT_INDEX_MULTIPLIER: u64 = 31;
 
+const WAVE_BAND_STRIDE: u64 = 997;
+const WAVE_COMPONENT_STRIDE: u64 = 31337;
+const MIN_WAVE_COMPONENTS: usize = 3;
+const MAX_WAVE_COMPONENTS: usize = 32;
+const FRACTAL_MAX_ITERATIONS: u32 = 32;
+const FRACTAL_ESCAPE_RADIUS_SQ: f64 = 4.0;
+const STYLE_SIGMA_SEED_OFFSET: u64 = 99;
+const FRACTAL_C_REAL_SEED_OFFSET: u64 = 77;
+const FRACTAL_C_IMAG_SEED_OFFSET: u64 = 78;
+
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum StyleMode {
     Wave,
@@ -136,8 +146,8 @@ struct WaveComponent {
 impl WaveComponent {
     fn from_seed(seed: u64, band: u64, component: u64) -> Self {
         let s = seed
-            .wrapping_add(band * 997)
-            .wrapping_add(component * 31337);
+            .wrapping_add(band * WAVE_BAND_STRIDE)
+            .wrapping_add(component * WAVE_COMPONENT_STRIDE);
         let amplitude = lcg_unit(s) * 0.6 + 0.1;
         let freq_x = lcg_unit(s.wrapping_add(1)) * 5.0 + 0.5;
         let freq_y = lcg_unit(s.wrapping_add(2)) * 5.0 + 0.5;
@@ -166,7 +176,7 @@ fn apply_style(nx: f64, ny: f64, base: f64, style: StyleMode, seed: u64) -> f64 
     let cy = ny - 0.5;
     let r = (cx * cx + cy * cy).sqrt();
     let theta = cy.atan2(cx);
-    let sigma = lcg_unit(seed.wrapping_add(99)) * 0.3 + 0.2;
+    let sigma = lcg_unit(seed.wrapping_add(STYLE_SIGMA_SEED_OFFSET)) * 0.3 + 0.2;
 
     match style {
         StyleMode::Wave => base,
@@ -182,17 +192,17 @@ fn apply_style(nx: f64, ny: f64, base: f64, style: StyleMode, seed: u64) -> f64 
         StyleMode::Fractal => {
             let mut z_r = cx * 3.0 + base;
             let mut z_i = cy * 3.0;
-            let c_r = lcg_unit(seed.wrapping_add(77)) * 2.0 - 1.0;
-            let c_i = lcg_unit(seed.wrapping_add(78)) * 2.0 - 1.0;
-            let max_iter = 32u32;
+            let c_r = lcg_unit(seed.wrapping_add(FRACTAL_C_REAL_SEED_OFFSET)) * 2.0 - 1.0;
+            let c_i = lcg_unit(seed.wrapping_add(FRACTAL_C_IMAG_SEED_OFFSET)) * 2.0 - 1.0;
             let mut iter = 0u32;
-            while iter < max_iter && z_r * z_r + z_i * z_i < 4.0 {
+            while iter < FRACTAL_MAX_ITERATIONS && z_r * z_r + z_i * z_i < FRACTAL_ESCAPE_RADIUS_SQ
+            {
                 let tmp = z_r * z_r - z_i * z_i + c_r;
                 z_i = 2.0 * z_r * z_i + c_i;
                 z_r = tmp;
                 iter += 1;
             }
-            iter as f64 / max_iter as f64
+            iter as f64 / FRACTAL_MAX_ITERATIONS as f64
         }
         StyleMode::Flow => {
             let stream_x = (TAU * ny * 2.0 + base).sin();
@@ -247,7 +257,9 @@ pub fn render(params: &ImagenParams) -> Result<String> {
         _ => Palette::from_seed(seed),
     };
 
-    let n = params.components.clamp(3, 32);
+    let n = params
+        .components
+        .clamp(MIN_WAVE_COMPONENTS, MAX_WAVE_COMPONENTS);
     let red_waves: Vec<WaveComponent> = (0..n)
         .map(|k| WaveComponent::from_seed(seed, 0, k as u64))
         .collect();
