@@ -3,7 +3,7 @@ requires = ["maturin>=1.13"]
 build-backend = "maturin"
 
 [project]
-name = "lmm"
+name = "lmm-rs"
 requires-python = ">=3.12"
 description = "A language agnostic framework for emulating reality: A pure Rust, training-free, equation-based intelligence."
 readme = "README.md"
