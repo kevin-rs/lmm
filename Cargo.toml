@@ -10,7 +10,7 @@ repository = "https://github.com/wiseaidotdev/lmm"
 homepage = "https://wiseai.dev"
 categories = ["science"]
 keywords = ["asi", "ai", "machine-learning", "llm"]
-exclude = ["/assets", "/tests", ".*"]
+exclude = ["/assets", "/tests", ".*", "/examples"]
 
 [lib]
 crate-type = ["cdylib", "rlib"]

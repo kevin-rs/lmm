@@ -1,0 +1,121 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  *, *::before, *::after {
+    box-sizing: border-box;
+  }
+
+  html, body, #app {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+  }
+
+  body {
+    @apply bg-vect-bg text-vect-text font-sans antialiased;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  ::-webkit-scrollbar {
+    width: 5px;
+    height: 5px;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-vect-surface;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-vect-border rounded-full;
+    transition: background 0.2s;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-vect-violet;
+  }
+
+  ::selection {
+    @apply bg-vect-violet text-white;
+  }
+}
+
+@layer components {
+  .vect-surface {
+    @apply bg-vect-surface border border-vect-border;
+  }
+
+  .vect-btn-primary {
+    @apply inline-flex items-center justify-center gap-2 bg-vect-violet hover:bg-vect-violet-hover
+      text-white font-semibold px-4 py-2 rounded-xl transition-all duration-200
+      focus:outline-none focus:ring-2 focus:ring-vect-violet focus:ring-offset-2 focus:ring-offset-vect-bg
+      active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .vect-btn-ghost {
+    @apply inline-flex items-center justify-center gap-2 bg-transparent hover:bg-vect-elevated
+      text-vect-muted hover:text-vect-text font-medium px-3 py-2 rounded-xl transition-all duration-200
+      focus:outline-none focus:ring-2 focus:ring-vect-violet;
+  }
+
+  .vect-input {
+    @apply bg-vect-elevated border border-vect-border text-vect-text rounded-xl px-4 py-3
+      focus:outline-none focus:ring-2 focus:ring-vect-violet focus:border-vect-violet
+      transition-all duration-200 placeholder-vect-subtle w-full;
+  }
+
+  .vect-textarea {
+    @apply bg-vect-elevated border border-vect-border text-vect-text rounded-xl px-4 py-3
+      focus:outline-none focus:ring-2 focus:ring-vect-violet focus:border-vect-violet
+      transition-all duration-200 placeholder-vect-subtle w-full resize-none;
+    min-height: 80px;
+    max-height: 200px;
+    overflow-y: auto;
+    field-sizing: content;
+  }
+
+  .mode-btn {
+    @apply flex items-center gap-2.5 w-full text-left px-3 py-2.5 rounded-xl text-sm font-medium
+      transition-all duration-150 cursor-pointer select-none;
+  }
+
+  .mode-btn-active {
+    @apply bg-vect-violet text-white shadow-glow-violet;
+  }
+
+  .mode-btn-inactive {
+    @apply text-vect-muted hover:bg-vect-elevated hover:text-vect-text;
+  }
+
+  .toggle-track {
+    @apply relative inline-flex h-6 w-11 cursor-pointer rounded-full transition-colors duration-200;
+  }
+
+  .toggle-thumb {
+    @apply absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform duration-200;
+  }
+
+  .message-user {
+    @apply self-end max-w-[85%] md:max-w-[70%] bg-gradient-to-br from-violet-700 to-vect-violet
+      text-white rounded-2xl rounded-br-sm px-5 py-3 shadow-glow-violet animate-fade-in;
+  }
+
+  .message-ai {
+    @apply self-start max-w-[85%] md:max-w-[70%] bg-vect-elevated border border-vect-border
+      text-vect-text rounded-2xl rounded-bl-sm px-5 py-3 animate-fade-in;
+  }
+
+  .badge {
+    @apply inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full;
+  }
+
+  .sidebar-label {
+    @apply text-xs font-semibold uppercase tracking-widest text-vect-subtle mb-2;
+  }
+
+  .control-row {
+    @apply flex items-center justify-between gap-3;
+  }
+}
