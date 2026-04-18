@@ -1,7 +1,9 @@
 use rand::{Rng, RngExt};
 use std::collections::HashMap;
+#[cfg(not(target_arch = "wasm32"))]
 use std::fs;
 
+#[cfg(not(target_arch = "wasm32"))]
 static SYSTEM_DICT_PATHS: &[&str] = &[
     "/usr/share/dict/american-english",
     "/usr/share/dict/english",
@@ -9,7 +11,9 @@ static SYSTEM_DICT_PATHS: &[&str] = &[
     "/usr/dict/words",
 ];
 const DEFAULT_REPLACEMENT_PROBABILITY: f64 = 0.5;
+#[cfg(not(target_arch = "wasm32"))]
 const WORDLIST_MIN_WORD_LEN: usize = 5;
+#[cfg(not(target_arch = "wasm32"))]
 const WORDLIST_MAX_WORD_LEN: usize = 14;
 
 const STOP_WORDS: &[&str] = &[
@@ -529,6 +533,7 @@ fn build_curated_table() -> HashMap<String, Vec<String>> {
     m
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 fn load_wordlist_by_length() -> HashMap<usize, Vec<String>> {
     let mut by_length: HashMap<usize, Vec<String>> = HashMap::new();
     for path in SYSTEM_DICT_PATHS {
@@ -546,6 +551,11 @@ fn load_wordlist_by_length() -> HashMap<usize, Vec<String>> {
         }
     }
     by_length
+}
+
+#[cfg(target_arch = "wasm32")]
+fn load_wordlist_by_length() -> HashMap<usize, Vec<String>> {
+    HashMap::new()
 }
 
 pub struct SynonymBank {

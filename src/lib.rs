@@ -14,7 +14,7 @@ pub mod field;
 pub mod imagen;
 pub mod lexicon;
 pub mod models;
-#[cfg(feature = "net")]
+#[cfg(any(feature = "net", feature = "wasm-net"))]
 pub mod net;
 pub mod operator;
 pub mod perception;

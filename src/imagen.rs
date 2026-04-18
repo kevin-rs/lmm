@@ -1,7 +1,12 @@
+#![cfg_attr(target_arch = "wasm32", allow(dead_code))]
 use crate::error::{LmmError, Result};
+
 use std::f64::consts::TAU;
+#[cfg(not(target_arch = "wasm32"))]
 use std::fs::File;
+#[cfg(not(target_arch = "wasm32"))]
 use std::io::{BufWriter, Write};
+#[cfg(not(target_arch = "wasm32"))]
 use std::path::Path;
 
 const LCG_MULTIPLIER: u64 = 6364136223846793005;
@@ -246,6 +251,7 @@ pub struct ImagenParams {
     pub output: String,
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 pub fn render(params: &ImagenParams) -> Result<String> {
     let seed = prompt_seed(&params.prompt);
 
@@ -278,15 +284,12 @@ pub fn render(params: &ImagenParams) -> Result<String> {
         let ny = py as f64 / (h - 1).max(1) as f64;
         for px in 0..w {
             let nx = px as f64 / (w - 1).max(1) as f64;
-
             let r_raw = spectral_field(&red_waves, nx, ny);
             let g_raw = spectral_field(&green_waves, nx, ny);
             let b_raw = spectral_field(&blue_waves, nx, ny);
-
             let r_val = apply_style(nx, ny, r_raw, params.style, seed.wrapping_add(0));
             let g_val = apply_style(nx, ny, g_raw, params.style, seed.wrapping_add(1));
             let b_val = apply_style(nx, ny, b_raw, params.style, seed.wrapping_add(2));
-
             let rgb = field_to_rgb(r_val, g_val, b_val, &palette);
             pixels.extend_from_slice(&rgb);
         }
@@ -315,6 +318,7 @@ pub fn render(params: &ImagenParams) -> Result<String> {
     Ok(out_path.to_string_lossy().into_owned())
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 fn write_ppm(path: &Path, width: usize, height: usize, pixels: &[u8]) -> Result<()> {
     let file = File::create(path)
         .map_err(|e| LmmError::Perception(format!("cannot create output file: {}", e)))?;

@@ -1,8 +1,12 @@
+#[cfg(not(target_arch = "wasm32"))]
 use crate::error::{LmmError, Result};
 use std::collections::HashMap;
+#[cfg(not(target_arch = "wasm32"))]
 use std::fs;
+#[cfg(not(target_arch = "wasm32"))]
 use std::path::Path;
 
+#[cfg(not(target_arch = "wasm32"))]
 static SYSTEM_DICT_PATHS: &[&str] = &[
     "/usr/share/dict/american-english",
     "/usr/share/dict/english",
@@ -23,6 +27,7 @@ pub fn word_tone(word: &str) -> f64 {
 }
 
 impl Lexicon {
+    #[cfg(not(target_arch = "wasm32"))]
     pub fn load_system() -> Result<Self> {
         for path in SYSTEM_DICT_PATHS {
             if let Ok(lexicon) = Self::load_from(Path::new(path)) {
@@ -34,6 +39,7 @@ impl Lexicon {
         ))
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     pub fn load_from(path: &Path) -> Result<Self> {
         let content = fs::read_to_string(path).map_err(|e| LmmError::Perception(e.to_string()))?;
         let mut words: Vec<String> = content
