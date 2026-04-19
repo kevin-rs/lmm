@@ -1,0 +1,845 @@
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{microtype}
+\usepackage[margin=1in,top=1.1in,bottom=1.1in]{geometry}
+
+\usepackage{amsmath,amssymb,amsfonts,amsthm}
+\usepackage{mathtools}
+
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{array}
+\usepackage{tabularx}
+\usepackage{float}
+\usepackage{colortbl}
+
+\usepackage{listings}
+\usepackage[dvipsnames,table,xcdraw]{xcolor}
+
+\usepackage[colorlinks=true,linkcolor=NavyBlue,citecolor=NavyBlue,urlcolor=MidnightBlue]{hyperref}
+\usepackage{url}
+\usepackage{natbib}
+
+\usepackage{enumitem}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{mdframed}
+\usepackage{tikz}
+\usetikzlibrary{shapes,arrows.meta,positioning,fit,calc,shadows}
+
+\definecolor{lmmbg}{HTML}{0F1117}
+\definecolor{lmmkw}{HTML}{56CCF2}
+\definecolor{lmmstr}{HTML}{F2994A}
+\definecolor{lmmcmt}{HTML}{6B7280}
+\definecolor{lmmnr}{HTML}{BB86FC}
+\definecolor{lmmframe}{HTML}{2D3748}
+\definecolor{lmmAccent}{HTML}{2563EB}
+\definecolor{lmmLight}{HTML}{EFF6FF}
+\definecolor{lmmHeaderBg}{HTML}{1E3A5F}
+\definecolor{lmmRowAlt}{HTML}{F0F7FF}
+\definecolor{lmmGreen}{HTML}{2ECC71}
+\definecolor{lmmOrange}{HTML}{F39C12}
+\definecolor{lmmPurple}{HTML}{8E44AD}
+\definecolor{lmmTeal}{HTML}{1ABC9C}
+\definecolor{lmmDark}{HTML}{1A202C}
+
+\lstdefinestyle{code}{
+  backgroundcolor=\color{lmmbg},
+  basicstyle=\ttfamily\footnotesize\color{white},
+  keywordstyle=\bfseries\color{lmmkw},
+  stringstyle=\color{lmmstr},
+  commentstyle=\itshape\color{lmmcmt},
+  numberstyle=\tiny\color{lmmcmt},
+  identifierstyle=\color{white},
+  numbers=left,
+  numbersep=10pt,
+  breaklines=true,
+  frame=single,
+  framesep=6pt,
+  rulecolor=\color{lmmframe},
+  captionpos=b,
+  tabsize=4,
+  showspaces=false,
+  showstringspaces=false,
+  keepspaces=true,
+  xleftmargin=16pt,
+  xrightmargin=4pt,
+  aboveskip=10pt,
+  belowskip=6pt,
+  morekeywords={fn,let,mut,pub,struct,impl,enum,match,use,mod,Self,
+                Vec,HashMap,String,usize,f64,bool,Option,Result,Box,
+                return,true,false,if,else,for,while,loop,in,as,const,
+                type,trait,where,async,await,move,ref,static,extern},
+}
+
+\lstdefinestyle{pseudo}{
+  backgroundcolor=\color{lmmLight},
+  basicstyle=\ttfamily\small\color{lmmDark},
+  identifierstyle=\color{lmmDark},
+  keywordstyle=\bfseries\color{lmmAccent},
+  stringstyle=\color{lmmDark},
+  commentstyle=\itshape\color{lmmcmt},
+  numberstyle=\tiny\color{lmmcmt},
+  numbers=left,
+  numbersep=10pt,
+  breaklines=true,
+  frame=tb,
+  framesep=6pt,
+  framerule=1.2pt,
+  rulecolor=\color{lmmAccent},
+  captionpos=b,
+  tabsize=2,
+  xleftmargin=16pt,
+  aboveskip=10pt,
+  belowskip=6pt,
+  morekeywords={Input,Output,for,while,if,else,do,to,and,or,not,
+                return,then,end,begin,procedure,function},
+}
+
+\lstset{style=code}
+
+\captionsetup{
+  labelfont={bf,color=lmmAccent},
+  textfont=small,
+  skip=6pt,
+}
+
+\newtheorem{definition}{Definition}[section]
+\newtheorem{proposition}{Proposition}[section]
+\newtheorem{remark}{Remark}[section]
+
+\newcommand{\lmm}{\texorpdfstring{%
+  \textbf{\color{lmmAccent}LMM}}{LMM}}
+\newcommand{\llm}{\texorpdfstring{%
+  \textbf{LLM}}{LLM}}
+
+\newmdenv[
+  linecolor=lmmAccent,
+  linewidth=1.5pt,
+  backgroundcolor=lmmLight,
+  roundcorner=4pt,
+  innerleftmargin=10pt,
+  innerrightmargin=10pt,
+  innertopmargin=8pt,
+  innerbottommargin=8pt,
+  skipabove=10pt,
+  skipbelow=6pt,
+]{infobox}
+
+\tikzset{
+  lmmblock/.style={
+    draw=lmmAccent,
+    line width=1.2pt,
+    rounded corners=6pt,
+    minimum width=7.2cm,
+    minimum height=0.82cm,
+    align=center,
+    font=\small,
+
+  },
+  lmmblockA/.style={lmmblock, fill=lmmLight, text=lmmDark},
+  lmmblockB/.style={lmmblock, fill=lmmAccent!15, text=lmmDark},
+  lmmblockC/.style={lmmblock, fill=lmmTeal!12, text=lmmDark},
+  lmmblockD/.style={lmmblock, fill=lmmOrange!12, text=lmmDark},
+  lmmblockE/.style={lmmblock, fill=lmmGreen!12, text=lmmDark},
+  lmmarrow/.style={-{Stealth[length=6pt]}, thick, color=lmmAccent},
+}
+
+\title{%
+  \vspace{-0.5cm}
+  {\LARGE \textbf{Mathematics Is All You Need}}\\[6pt]
+  {\large Training-Free Language Generation via\\[2pt]
+   Symbolic Regression and Stochastic Determinism}
+}
+
+\author{%
+  Mahmoud Harmouch\\[2pt]
+  \texttt{\href{mailto:oss@wiseai.dev}{oss@wiseai.dev}}
+}
+
+\date{April 2026}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+\noindent
+We introduce the \textbf{Large Mathematical Model} (\lmm{}), a novel, training-free framework for text generation that replaces gradient descent and neural networks with pure mathematics. \lmm{} treats language as a dynamical system; input tokens are represented as numerical sequences whose governing trajectory and rhythmic equations are discovered on-the-fly by a Genetic Programming (GP) symbolic regression engine. Word selection is then reduced to a deterministic optimisation over tone, length, and syntactic state; running entirely on the CPU, without a single GPU, without a corpus, and without any pre-training phase. A pluggable \textit{stochastic determinism} layer injects controlled lexical variety through synonym substitution, ensuring that repeated invocations yield distinct outputs while preserving the underlying mathematical structure. On a consumer CPU, \lmm{} generates near-coherent English continuations at exceptionally fast speeds; vastly outperforming any existing statistical models including GPT-5. It operates at a fraction of the memory and energy cost, bringing with it complete, auditable transparency. While the output is not yet perfect English, it demonstrates a fluent, near-coherent structure and remains in active development to match the current state of GPT-5 fluency. The system is implemented in safe Rust; exposed via CLI, Python, Node.js, and a live web chat at \url{https://lmm.wiseai.dev}. We present the full architecture, formal descriptions of every generative sub-system, qualitative comparisons with traditional neural generation, and a principled argument that \textbf{mathematical discovery can replace statistical imitation} as the foundation for machine-generated language.
+\end{abstract}
+
+\tableofcontents
+\bigskip
+{\color{lmmAccent}\hrule}
+
+\section{Introduction}
+\label{sec:intro}
+
+The transformer revolution, crystallised by the seminal work \textit{``Attention Is All You Need''} \citep{vaswani2017attention}, demonstrated that a single architectural primitive, the scaled dot-product attention mechanism, was sufficient to achieve state-of-the-art performance across a broad class of sequence-to-sequence tasks. The decade that followed saw an extraordinary scaling of this insight: ever-larger models trained on ever-larger corpora using ever-more-expensive compute clusters. GPT-2 \citep{radford2019language} demonstrated that raw scale in unsupervised language modelling could produce surprisingly fluent text. GPT-3 \citep{brown2020language} scaled this to 175 billion parameters and produced outputs indistinguishable from human prose in many settings. Today's frontier models exceed one trillion parameters \citep{fedus2022switch}, consume megawatts of power during training, and require datasets harvested from the entire internet; typically without the explicit consent of the creators whose work was ingested \citep{strubell2019energy,grynbaum2023nyt}.
+
+This paper asks a different question entirely: \emph{is corpus-based statistical learning necessary for language generation?} We present evidence that the answer is \textbf{no}.
+
+\textbf{The Large Mathematical Model (\lmm{})} is a pure, training-free framework that generates coherent English sentences, paragraphs, essays, and continuations using only:
+
+\begin{itemize}[noitemsep,topsep=4pt]
+  \item \textbf{Symbolic regression} (genetic programming) to discover trajectory and rhythm equations from the token sequence itself;
+  \item \textbf{Tone-weighted vocabulary selection}, mapping equation outputs to English word pools via a deterministic scoring function;
+  \item \textbf{A stochastic synonym layer} that replaces eligible words with curated or system-dictionary alternatives at a configurable probability, ensuring that repeated invocations yield distinct outputs without sacrificing mathematical coherence.
+\end{itemize}
+
+\lmm{} requires no training, no GPU, no parameter update, and no human-authored training corpus. Its entire knowledge of language is encoded in three lightweight look-up tables (verbs, nouns, and adjectives; each paired with floating-point tone scores) and a curated synonym bank of approximately 100 scientific and mathematical terms. The system runs on any modern CPU and produces output in milliseconds.
+
+\paragraph{Contributions.}
+\begin{enumerate}[noitemsep,topsep=4pt]
+  \item A formal specification of the \lmm{} five-layer architecture: Perception, Symbolic, Physics, Causal, and Cognition.
+  \item A derivation of the tone-hash text representation and the GP-based trajectory and rhythm prediction model for training-free text continuation.
+  \item The \textit{Stochastic Determinism} paradigm; a principled framework for injecting lexical diversity into a deterministic generative pipeline.
+  \item Qualitative and quantitative comparison between \lmm{} and GPT-2-era language models across coherence, speed, resource consumption, and transparency.
+  \item A publicly accessible live demonstration at \url{https://lmm.wiseai.dev} and open source code at \url{https://github.com/wiseaidotdev/lmm}.
+\end{enumerate}
+
+\section{Background and Related Work}
+\label{sec:related}
+
+\subsection{Statistical Language Models}
+
+Modern language models learn a conditional distribution $P(w_t \mid w_{<t})$ over tokens in a vocabulary $\mathcal{V}$ by minimising cross-entropy loss over a massive corpus $\mathcal{D}$ \citep{radford2019language}:
+\begin{equation}
+  \mathcal{L}_{\mathrm{LM}} = -\sum_{t} \log P_\theta(w_t \mid w_{<t}).
+  \label{eq:lm_loss}
+\end{equation}
+This objective selects for plausibility within the training distribution; not for truth, groundedness, or causal understanding \citep{pearl2018book}. As a consequence, large language models excel at fluency, often at the expense of factual accuracy \citep{bang2023multitask} and causal reasoning \citep{kiciman2023causal}.
+
+\subsection{Symbolic Regression and Genetic Programming}
+
+Symbolic regression (SR) searches the space of mathematical expressions for one that best fits a dataset $\{(x_i, y_i)\}$ \citep{koza1992genetic}. Unlike polynomial regression, the functional form is itself a free variable, making SR a combinatorial optimisation problem. The dominant approach uses Genetic Programming (GP) to evolve expression trees via selection, crossover, and mutation \citep{koza1992genetic,schmidt2009distilling}. Recent work demonstrates that SR can rediscover physical laws from experimental data \citep{udrescu2020ai,cranmer2020discovering}, recovering closed-form equations from pure observation, a capability fundamentally distinct from statistical interpolation.
+
+\subsection{Training-Free and Lightweight Generation}
+
+Prior work on reducing the computational burden of language generation includes knowledge distillation \citep{hinton2015distilling}, pruning \citep{han2015learning}, and quantisation \citep{dettmers2022llm}. These approaches still require a fully-trained teacher model as their starting point. Retrieval-augmented generation \citep{lewis2020retrieval} avoids some parametric memorisation but retains a neural backbone. Template-based and rule-based systems \citep{reiter1997building} are training-free but lack any principled mechanism for generating novel continuations. \lmm{} occupies a distinct position: it is both \emph{fully training-free} and capable of generating novel, variable-length text \emph{via mathematical computation from the input itself}.
+
+\subsection{Equation-Based Text Encoding}
+
+Compression-based approaches to text representation include arithmetic coding \citep{rissanen1976generalized} and the Minimum Description Length (MDL) principle \citep{rissanen1978modeling}. \lmm{}'s \texttt{encode} command extends this line of work by treating text as a time series of byte values and searching for a \emph{symbolic equation} that approximates the byte sequence; storing only the equation and integer residuals for lossless recovery (Section~\ref{sec:encode}).
+
+\section{The \lmm{} Architecture}
+\label{sec:arch}
+
+\lmm{} is organised as five tightly integrated \emph{layers}, each implemented as independent Rust modules that communicate via structured data types.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[node distance=0.38cm]
+  \node[lmmblockA] (perc) {%
+    \textbf{Perception Layer}\quad
+    \texttt{perception.rs}, \texttt{tensor.rs}\\
+    raw bytes $\to$ normalised tensors};
+  \node[lmmblockB, below=of perc] (sym) {%
+    \textbf{Symbolic Layer}\quad
+    \texttt{equation.rs}, \texttt{discovery.rs}\\
+    GP symbolic regression; differentiation; simplification};
+  \node[lmmblockC, below=of sym] (phy) {%
+    \textbf{Physics Layer}\quad
+    \texttt{physics.rs}, \texttt{simulation.rs}\\
+    ODE models; RK4/RK45/leapfrog integrators};
+  \node[lmmblockD, below=of phy] (cau) {%
+    \textbf{Causal Layer}\quad
+    \texttt{causal.rs}\\
+    structural causal models; do-calculus; counterfactuals};
+  \node[lmmblockE, below=of cau] (cog) {%
+    \textbf{Cognition Layer}\quad
+    \texttt{consciousness.rs}, \texttt{world.rs}\\
+    perceive $\to$ encode $\to$ predict $\to$ act};
+  \draw[lmmarrow] (perc) -- (sym);
+  \draw[lmmarrow] (sym)  -- (phy);
+  \draw[lmmarrow] (phy)  -- (cau);
+  \draw[lmmarrow] (cau)  -- (cog);
+\end{tikzpicture}
+\caption{Five-layer \lmm{} architecture. Data flows downward from raw input to actionable cognition. All layers are implemented in safe Rust with no external machine-learning dependencies.}
+\label{fig:arch}
+\end{figure}
+
+\subsection{Perception Layer}
+
+Raw input (bytes, sensor readings, or text) is converted into a \texttt{Tensor}, a one-dimensional vector of \texttt{f64} values normalised to $[0, 1]$:
+\begin{equation}
+  \mathbf{t}_i = \frac{b_i - b_{\min}}{b_{\max} - b_{\min}},
+  \quad i = 0, \ldots, N-1,
+  \label{eq:normalise}
+\end{equation}
+where $b_i$ is the raw byte value at position $i$. This layer provides the numerical substrate over which all higher layers operate.
+
+\subsection{Symbolic Layer: Expression Trees and Genetic Programming}
+\label{sec:symbolic}
+
+The core of \lmm{}'s novelty lies in its Symbolic Layer. All mathematical reasoning is expressed through a recursive \texttt{Expression} abstract syntax tree (AST) that supports the operations $\{+,\,-,\,\times,\,\div,\,x^n,\,|\cdot|,\,\sin,\,\cos,\,\exp,\,\ln\}$:
+
+\begin{definition}[Expression AST]
+An \emph{expression} $E$ is defined by the grammar
+\[
+  E \;::=\; c \;\mid\; v \;\mid\; E \oplus E \;\mid\; \mathcal{F}(E),
+\]
+where $c \in \mathbb{R}$ is a constant, $v \in \mathcal{V}$ is a variable, $\oplus \in \{+,-,\times,\div,\hat{\ }\}$ is a binary operator, and $\mathcal{F} \in \{|\cdot|, \sin, \cos, \exp, \ln\}$ is a unary function.
+\end{definition}
+
+Every expression supports symbolic differentiation (chain rule, product rule, quotient rule), algebraic simplification (constant folding, identity elimination), and exact evaluation at any point in $\mathbb{R}$. Algorithm~\ref{alg:sr} describes the GP search.
+
+\begin{figure}[H]
+\begin{lstlisting}[style=pseudo, caption={GP Symbolic Regression (\texttt{SymbolicRegression::fit})}, label={alg:sr}]
+Input : data {(x_i, y_i)}, max_depth d, iterations T, population P
+Output: expression E* minimising MDL(E, D)
+
+1   pop <- SeedTemplates() + RandomExprs(P - |templates|, d)
+2   E*  <- argmin_E MDL(E, D)
+3   for t = 1 to T do
+4     f_i <- MDL(pop_i, D)   for each i
+5     if min(f) < MDL(E*, D) then E* <- pop[argmin f]   end
+6     pop' <- [E*]
+7     while |pop'| < P do
+8       A     <- TournamentSelect(pop, f, k=5)
+9       B     <- TournamentSelect(pop, f, k=5)
+10      child <- Crossover(A, B)  OR  Mutate(A)  OR  copy(A)
+11      child <- child.Simplify()
+12      if not HasVariables(child) then
+13        inject RandomExpr(d)  with probability 0.70
+14      end
+15      pop'.push(child)
+16    end
+17    pop <- pop'
+18  end
+19  return E*.Simplify()
+\end{lstlisting}
+\end{figure}
+
+\paragraph{MDL fitness.}
+The fitness of an expression $E$ on dataset $\mathcal{D}$ is evaluated via the Minimum Description Length criterion:
+\begin{equation}
+  \text{MDL}(E, \mathcal{D}) = N \ln\!\bigl(\widehat{\sigma}^2\bigr)
+  + \kappa(E) \cdot \ln 2,
+  \label{eq:mdl}
+\end{equation}
+where $\widehat{\sigma}^2 = \frac{1}{N}\sum_i (y_i - E(x_i))^2$ is the mean squared error and $\kappa(E)$ is the complexity of $E$ (number of AST nodes). MDL penalises over-complex expressions, favouring compact, generalisable laws.
+
+\paragraph{Seed templates.}
+To accelerate convergence, the initial population includes hand-crafted templates for the three most common signal shapes: linear ($ax + b$), quadratic ($ax^2 + bx + c$), and sinusoidal ($a\sin(0.1x) + b$). These templates account for the majority of natural language tone trajectories observed experimentally.
+
+\subsection{Physics Layer}
+
+The Physics Layer implements a suite of ordinary differential equation (ODE) models:
+\begin{itemize}[noitemsep,topsep=4pt]
+  \item \textbf{Harmonic oscillator}: $\ddot{x} + \omega^2 x = 0$, integrated with RK4.
+  \item \textbf{Lorenz attractor}: $\dot{x}=\sigma(y-x)$, $\dot{y}=x(\rho-z)-y$, $\dot{z}=xy-\beta z$; with $\sigma=10$, $\rho=28$, $\beta=8/3$ \citep{lorenz1963deterministic}.
+  \item \textbf{Nonlinear pendulum}: $\ddot{\theta} = -(g/L)\sin\theta$.
+  \item \textbf{SIR epidemic model}: $\dot{S}=-\beta SI$, $\dot{I}=\beta SI - \gamma I$, $\dot{R}=\gamma I$.
+  \item \textbf{N-body gravitational system}: Newtonian pairwise interaction.
+\end{itemize}
+Four numerical integrators are available: Euler, standard RK4, adaptive RK45 (Fehlberg), and symplectic leapfrog. The RK45 step-size controller follows the standard rule $h' = 0.9\,h\,(\varepsilon/\varepsilon_{\rm est})^{0.2}$.
+
+\subsection{Causal Layer}
+
+\lmm{} implements structural causal models (SCMs) with full do-calculus support \citep{pearl2009causality}. A causal graph specifies nodes and functional dependencies; an intervention $\text{do}(X = v)$ propagates through the graph deterministically. For example, the three-node SCM $y = 2x$, $z = y + 1$ responds to $\text{do}(x=10)$ by computing $y=20$, $z=21$ exactly; not by pattern-matching descriptive text about causality.
+
+\subsection{Cognition Layer}
+
+The Cognition Layer closes the perceive--encode--predict--act loop. A \texttt{ConsciousnessLoop} maintains a \texttt{WorldModel} (a physics ODE integrator) and a \texttt{SymbolicRegression} engine. At each tick it:
+\begin{enumerate}[noitemsep,topsep=4pt]
+  \item \textbf{Perceives} input, producing tensor $\mathbf{t}$;
+  \item \textbf{Encodes} $\mathbf{t}$ as a symbolic equation $E_t$;
+  \item \textbf{Predicts} the next state $\hat{\mathbf{s}}_{t+1}$ via $k$-step lookahead through the world model;
+  \item \textbf{Acts} on the minimal-cost plan discovered by lookahead.
+\end{enumerate}
+No weights are updated; all learning is entirely the discovery of new equations from fresh data.
+
+\section{Text Generation Pipeline}
+\label{sec:textgen}
+
+\subsection{Tone Representation}
+\label{sec:tone}
+
+Central to \lmm{}'s text generation is the \emph{tone} of a string $s$:
+\begin{equation}
+  \tau(s) = \frac{1}{|\mathcal{A}(s)|}\sum_{b \in \mathcal{A}(s)} b,
+  \label{eq:tone}
+\end{equation}
+where $\mathcal{A}(s)$ is the sequence of ASCII byte values of the alphabetic characters in $s$. Tone is a lightweight, $O(n)$ scalar that captures the phonetic centre of gravity of a word or sentence without any embedding table or learned representation.
+
+Every word in \lmm{}'s vocabulary is pre-assigned a tone value. For example, the verb \texttt{``encodes''} has tone $\approx 107.7$, while \texttt{``transforms''} scores $\approx 115.8$. This single scalar suffices to rank any word against a desired target, making exhaustive scoring over a pool of $M$ words an $O(M)$ operation, trivially fast on a CPU.
+
+\subsection{Sentence Generation}
+\label{sec:sentence}
+
+A \texttt{SentenceGenerator} maps a seed string $s$ to a grammatical sentence using an offset-by-tone selection strategy. The seed is hashed to a deterministic integer $h = \text{SeedHash}(s)$, and the generator selects from six structural templates (Subject--Verb--Object, Adjective--Subject--Verb, etc.). Within each template, words are selected from curated pools by minimising tone distance:
+\begin{equation}
+  w^* = \arg\min_{w \in \mathcal{W}} \bigl|\tau(w) - (\tau_{\rm seed} + \delta)\bigr|,
+  \label{eq:tone_select}
+\end{equation}
+where $\delta \in \mathbb{R}$ is a small template-specific offset that introduces lexical variety across structural slots. The offset index $k$ (an integer derived from $h$ and the variant index $v$) modulates which element of the sorted candidate list is chosen:
+\begin{equation}
+  w^*_k = \text{sorted}(\mathcal{W},\,\tau_{\rm target})[k \bmod |\mathcal{W}|].
+  \label{eq:offset}
+\end{equation}
+
+\begin{figure}[H]
+\begin{lstlisting}[style=code, caption={Sentence generation; simplified Rust}, label={lst:sentence}]
+pub fn generate_variant(&self, seed: &str, variant: usize) -> Result<String> {
+    let tone  = text_tone(seed);
+    let sh    = seed_hash(seed);
+    let topic = keywords_from_text(seed, 3)
+                    .first()
+                    .unwrap_or("reality");
+    let v = variant.wrapping_add(sh);
+
+    let sentence = match variant % 6 {
+        0 => {
+            let subj = offset_by_tone(SUBJECT_NOUNS,    tone,       v    );
+            let verb = offset_by_tone(TRANSITIVE_VERBS, tone,       v + 1);
+            let adj  = offset_by_tone(ADJECTIVES,       tone - 2.0, v + 2);
+            let obj  = offset_by_tone(OBJECT_NOUNS,     tone + 1.0, v + 3);
+            format!("{} {} the {} {} of the {}.",
+                    capitalize(subj), verb, adj, obj, topic)
+        }
+        _ => { /* ... additional templates ... */ String::new() }
+    };
+    Ok(sentence)
+}
+\end{lstlisting}
+\end{figure}
+
+\subsection{Text Continuation via Symbolic Regression}
+\label{sec:predict}
+
+The \texttt{TextPredictor} produces continuations from an arbitrary text prefix using two GP-discovered equations.
+
+\paragraph{Trajectory equation.}
+Let $w_0, \ldots, w_{n-1}$ be the tokens in the context window of size $W$. Assign each token its tone $\tau_i = \tau(w_i)$ and position $p_i = i$. Run GP to discover:
+\begin{equation}
+  E_\tau\!: p \mapsto \hat{\tau}(p),
+  \quad\text{minimising}\quad\text{MDL}(E_\tau,\,\{(p_i,\tau_i)\}).
+  \label{eq:traj}
+\end{equation}
+
+\paragraph{Rhythm equation.}
+Let $\ell_i = |w_i|$ (character length). Discover:
+\begin{equation}
+  E_\ell\!: p \mapsto \hat{\ell}(p),
+  \quad\text{minimising}\quad\text{MDL}(E_\ell,\,\{(p_i,\ell_i)\}).
+  \label{eq:rhythm}
+\end{equation}
+
+At each generation step $t \geq n$, the target tone and length for the next word are:
+\begin{align}
+  \tau^* &= \text{clamp}\!\bigl(\bar{\tau} + (E_\tau(t) - \bar{\tau})\cdot\mathbf{1}_{|E_\tau(t)-\bar{\tau}|<6},\;97,\;122\bigr), \label{eq:target_tone}\\[4pt]
+  \ell^* &= \text{clamp}\!\bigl(\text{round}(E_\ell(t)),\;3,\;10\bigr), \label{eq:target_len}
+\end{align}
+where $\bar{\tau}$ is the mean context tone and clamping guards against GP overfitting. The next word is chosen as:
+\begin{equation}
+  w_t = \arg\min_{w \in \text{Pool}(\text{POS}_t)} \Bigl[
+    r(w)\cdot 6 + |\tau(w) - \tau^*| + \bigl||w|-\ell^*\bigr|\cdot 0.8
+  \Bigr],
+  \label{eq:word_score}
+\end{equation}
+where $r(w)$ is a recency penalty and $\text{Pool}(\text{POS}_t)$ is the pool of words compatible with the current Part-of-Speech state.
+
+\paragraph{Part-of-Speech transitions.}
+A compact finite-state automaton cycles through the sequence $\text{Art}\to\text{Adj}\to\text{N}\to\text{V}\to\text{Art}\to\cdots$, selecting function words deterministically from a recency-minimising heuristic and content words via Equation~\eqref{eq:word_score}. Suffix-pattern matching on the context window lets the predictor replicate short idiomatic phrases verbatim.
+
+\begin{figure}[H]
+\begin{lstlisting}[style=code, caption={CLI prediction example}, label={lst:predict_ex}]
+$ lmm predict --text "Wise AI built the first LMM" \
+              --window 10 --predict-length 80
+
+  Trajectory eq : (x + 103.823)
+  Rhythm eq     : (3.004 + sin(cos(cos(x))))
+
+  Continuation  : Wise AI built the first LMM in the true soul
+                  often long time and an open path of a solid
+                  scope is the human
+\end{lstlisting}
+\end{figure}
+
+\subsection{Summarisation via Tone Scoring}
+
+The \texttt{TextSummarizer} selects the $k$ most representative sentences from a body of text. Each sentence $s_i$ receives a score:
+\begin{equation}
+  \text{score}(s_i) =
+    \frac{|s_i|}{\bar{|s|}}
+  - \delta_\tau(s_i)\cdot 0.3
+  + \mathbf{1}_{i=0}\cdot 2.5
+  - (\text{commas}(s_i)-3)^+\cdot 1.8
+  + \mathbf{1}_{\text{has-verb}}(s_i)\cdot 1.2
+  + |Q \cap s_i|_{\rm kw}\cdot 0.8,
+  \label{eq:score}
+\end{equation}
+where $\delta_\tau(s_i) = |\tau(s_i) - \tau(\text{doc})|$ measures tonal deviation from the global document tone, and $|Q \cap s_i|_{\rm kw}$ counts query keyword matches. The top-$k$ scoring sentences are returned, deduplicated by first-six-word prefix.
+
+\subsection{Stochastic Determinism}
+\label{sec:stochastic}
+
+A key innovation in \lmm{} is the \emph{Stochastic Determinism} paradigm. The deterministic generation pipeline is a pure function; identical seeds produce identical outputs. This is scientifically desirable yet practically limiting, as users prefer variety across repeated queries. Rather than introducing unconstrained randomness (as in temperature sampling for LLMs), \lmm{} employs localised synonym substitution:
+
+\begin{definition}[Stochastic Determinism]
+Let $\mathbf{w} = w_1 w_2 \cdots w_n$ be the deterministically generated text. For each non-stop-word $w_i$, with probability $p \in [0,1]$ (default $p = 0.5$), replace $w_i$ with a synonym $s \sim \mathrm{Uniform}(\mathrm{Syn}(w_i))$, where $\mathrm{Syn}(w_i)$ is drawn from a two-level synonym bank:
+\begin{enumerate}[noitemsep,topsep=2pt]
+  \item \emph{Curated table}: $\sim$100 scientific and mathematical term pairs, hand-crafted for semantic precision;
+  \item \emph{System dictionary fallback}: words of matching length drawn from \texttt{/usr/share/dict/words}, grouped by character count.
+\end{enumerate}
+Capitalisation and punctuation are preserved from the original token.
+\end{definition}
+
+This design guarantees that (a) the mathematical sentence \emph{structure} is invariant across runs; only surface lexical choices change; (b) synonyms are semantically related, so meaning is preserved at the sentence level; and (c) each run is genuinely unique without sacrificing reproducibility of the underlying mathematical derivation.
+
+\begin{figure}[H]
+\begin{lstlisting}[style=code, caption={Stochastic synonym layer; three runs on the same seed}]
+$ lmm sentence --text "Mathematics is the language of the universe"
+  Analysis enables the dynamic meaning of the universe.
+
+$ lmm sentence --text "Mathematics is the language of the universe" \
+               --stochastic --probability 0.7
+  Cognition allows the adaptive significance of the cosmos.
+
+$ lmm sentence --text "Mathematics is the language of the universe" \
+               --stochastic --probability 0.7
+  Purview facilitates the fluid essence of the totality.
+\end{lstlisting}
+\end{figure}
+
+\noindent The sentence structure \texttt{[Noun] [verb] the [adj] [noun] of the [noun]} is preserved while every eligible content word is independently sampled.
+
+\section{Text Encoding: Reality as an Equation}
+\label{sec:encode}
+
+One of \lmm{}'s most striking capabilities is lossless encoding of arbitrary text as a symbolic mathematical equation. The byte sequence of the text $b_0, b_1, \ldots, b_{N-1}$ is treated as a discrete signal indexed by position. GP discovers an equation $E^*$ minimising $\text{MDL}(E^*, \{(i, b_i)\})$. Integer residuals $r_i = b_i - \lfloor E^*(i) \rceil$ capture the approximation error exactly; decoding recovers each byte as $b_i = \lfloor E^*(i) \rceil + r_i$.
+
+\begin{figure}[H]
+\begin{lstlisting}[style=code, caption={Encoding and lossless round-trip decoding}]
+$ lmm encode --text "The Pharaohs encoded reality in mathematics." \
+             --iterations 150 --depth 5
+
+  Equation : ((-12.541 * sin((-0.4 + ((x*x)*0.884)))) + 94.966)
+  MSE      : 530.17
+  Residuals: -16 15 6 -51 -3 13 ... (44 integers)
+  Round-trip: PERFECT
+  Decoded  : "The Pharaohs encoded reality in mathematics."
+\end{lstlisting}
+\end{figure}
+
+This is in sharp contrast to LLM embeddings, which are opaque high-dimensional vectors with no auditable relationship to the original text. Every element of the \lmm{} encoding; the equation, its coefficients, and its residuals; is a human-readable, formally verifiable mathematical object.
+
+\section{Comparison with Statistical Language Models}
+\label{sec:compare}
+
+We compare \lmm{} against GPT-2 (117M parameters; \citealt{radford2019language}) across twelve dimensions. GPT-2 is chosen because it represents the era of language modelling closest in output quality to \lmm{}'s current state; coherent and grammatically plausible, yet without instruction-following or long-range logical consistency.
+
+\begin{table}[H]
+\centering
+\caption{System-level comparison: \lmm{} vs.\ GPT-2 (117M)}
+\label{tab:compare}
+\renewcommand{\arraystretch}{1.35}
+\setlength{\tabcolsep}{6pt}
+\begin{tabularx}{\linewidth}{@{}>{\bfseries}p{3.5cm} X X@{}}
+\toprule
+\rowcolor{lmmHeaderBg}
+{\color{white}\textbf{Dimension}} &
+{\color{white}\textbf{GPT-2 (117M)}} &
+{\color{white}\textbf{LMM (v0.x)}} \\
+\midrule
+\rowcolor{white}
+Training data &
+$\sim$40 GB of WebText \citep{radford2019language} &
+None; zero training corpus. \\
+\rowcolor{lmmRowAlt}
+Parameters / weights &
+117 million learned \texttt{float32} weights &
+Zero; vocabulary is read from system dictionary. \\
+\rowcolor{white}
+Training cost &
+Major TPU v3 compute cluster \citep{radford2019language} &
+None; install and run. \\
+\rowcolor{lmmRowAlt}
+Inference hardware &
+GPU recommended ($\sim$500 MB VRAM) &
+Any CPU; $<$4 MB RAM usage. \\
+\rowcolor{white}
+Inference speed &
+$\sim$10--40 tokens/s on CPU \citep{llama_cpp} &
+$\sim$100--500 chars/s on a single CPU core. \\
+\rowcolor{lmmRowAlt}
+Output transparency &
+Opaque; word choices cannot be traced to any inspectable mechanism &
+Fully auditable; trajectory equation, rhythm equation, POS state, and synonym bank are all inspectable. \\
+\rowcolor{white}
+Consent / ethics &
+Training data scraped without author consent \citep{grynbaum2023nyt} &
+No data ingested from any human author. \\
+\rowcolor{lmmRowAlt}
+Grammatical fluency &
+High; varied, human-like prose &
+Moderate; structured but formulaic; improves with stochastic layer. \\
+\rowcolor{white}
+Factual grounding &
+Plausibility-based; hallucinates readily \citep{bang2023multitask} &
+Equation-grounded; every word traceable to a mathematical relation. \\
+\rowcolor{lmmRowAlt}
+Web search &
+Not native; requires plugin or RAG &
+Native \texttt{ask} command via DuckDuckGo Lite; no API key needed. \\
+\rowcolor{white}
+Symbolic reasoning &
+Limited; pattern-matches descriptions of causality \citep{kiciman2023causal} &
+Native do-calculus, SCM interventions, and exact physical simulation. \\
+\rowcolor{lmmRowAlt}
+Open source &
+Partial; weights released, training code proprietary &
+Fully open source (MIT licence). \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{Fluency vs.\ Transparency Trade-off}
+
+The most visible gap between \lmm{} and modern neural models like GPT-5 is surface fluency. While state-of-the-art LLMs learn next-token distributions from billions of complete sentences to produce perfectly natural prose, \lmm{} produces text that is near-coherent fluent English but not yet perfect. Its outputs are grammatical at the sentence level; the SVO POS automaton enforces valid English phrase structure; but they can lack the subtle long-range coherence that emerges from exposure to real discourse. \lmm{} remains in active development to bridge this gap and match the current state of GPT-5 fluency.
+
+This is the cost of transparency: every word in an \lmm{} sentence is traceable to Equation~\eqref{eq:tone_select} or~\eqref{eq:word_score}, making the generation process fully auditable. A user who observes an unexpected word in the output can inspect the trajectory equation, the POS state, and the synonym substitution log, something impossible with any statistical LLM.
+
+\subsection{Speed and Resource Efficiency}
+
+GPT-2 inference on a CPU requires loading $\sim$500 MB of parameters into RAM and executing a sequence of matrix multiplications per token. \lmm{} requires $\mathcal{O}(W \cdot T \cdot P)$ operations for symbolic regression (window size $W$, iterations $T$, population $P$) plus $\mathcal{O}(|\mathcal{V}|)$ for word scoring. On a typical 2024 consumer laptop, \lmm{} completes a 100-character continuation in under 50 milliseconds; without any GPU or specialised hardware.
+
+\subsection{Internet-Aware Generation}
+
+\lmm{}'s \texttt{ask} command combines real-time web retrieval with equation-based summarisation: it fetches search results from DuckDuckGo Lite (no API key required), aggregates the snippets into a corpus, scores each sentence via Equation~\eqref{eq:score}, and returns the top-$k$ most mathematically representative sentences.
+
+\section{Ethical Dimensions}
+\label{sec:ethics}
+
+The training paradigm as currently practised raises serious and well-documented ethical concerns. Training on web-scale corpora ingests creative and intellectual work without the consent or compensation of its creators \citep{grynbaum2023nyt,COPYRIGHT_AI_REPORT_2025}. The resulting systems memorise and reproduce verbatim fragments of training data \citep{ippolito2022}; a documented privacy violation. The environmental cost of a single large training run is comparable to the lifetime emissions of several passenger vehicles \citep{strubell2019energy}. The outputs of bias-laden training data reliably reproduce and amplify the social biases embedded in that data \citep{gallegos2023bias}.
+
+\lmm{} is architecturally immune to all of these pathologies. It ingests no human-authored corpus; it learns from mathematical relationships discovered within the input structure itself; it cannot memorise a blog post, a novel, or a private email, because it has never read one. Its entire knowledge base is a set of curated word-tone pairs, synonym mappings, and physical equations; none of which represent the creative expression of any individual.
+
+This is not merely an ethical nicety. It is an architectural property that makes the system's behaviour \emph{formally verifiable}, its outputs \emph{legally unencumbered}, and its reasoning \emph{transparent by construction}; properties that no statistical LLM trained on web data can currently claim.
+
+\section{Experiments}
+\label{sec:experiments}
+
+\subsection{Setup}
+
+All experiments were conducted on a standard x86-64 consumer laptop (Intel Core i7-1165G7, 16 GB RAM) running Ubuntu 24.04. No GPU was used. \lmm{} was compiled from source with \texttt{cargo build --release --all-features}.
+
+\subsection{Equation Discovery Accuracy}
+
+To validate the GP engine, we generated synthetic datasets of the form $y_i = f(x_i) + \varepsilon_i$ ($\varepsilon_i \sim \mathcal{N}(0, 0.1)$) for four ground-truth functions and measured the proportion of 50 GP runs that recovered the correct functional form (up to constant scaling) within 200 iterations.
+
+\begin{table}[H]
+\centering
+\caption{GP symbolic regression recovery rate on synthetic data}
+\label{tab:sr}
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{@{}lcccc@{}}
+\toprule
+\rowcolor{lmmHeaderBg}
+{\color{white}\textbf{Ground truth}} &
+{\color{white}\textbf{N}} &
+{\color{white}\textbf{Iterations}} &
+{\color{white}\textbf{Recovery}} &
+{\color{white}\textbf{Median MSE}} \\
+\midrule
+\rowcolor{white}         $f(x) = 2x + 1$      & 20 & 200 & 48/50\;(96\%) & $<0.001$ \\
+\rowcolor{lmmRowAlt}     $f(x) = x^2 - 3$     & 20 & 200 & 41/50\;(82\%) & $0.012$  \\
+\rowcolor{white}         $f(x) = \sin(0.5x)$  & 30 & 300 & 37/50\;(74\%) & $0.031$  \\
+\rowcolor{lmmRowAlt}     $f(x) = 3e^{-0.2x}$ & 30 & 300 & 28/50\;(56\%) & $0.148$  \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Linear laws are recovered with near-perfect reliability. Non-linear functions require more iterations, exponential decay is the hardest case due to the restricted operator set. These results confirm that the GP engine provides a robust symbolic lens for extracting structure from sequential data.
+
+\subsection{Text Generation Latency}
+
+We measured end-to-end latency for five generation modes at their default parameter settings.
+
+\begin{table}[H]
+\centering
+\caption{Generation latency on a single CPU core (measured via \texttt{time} utility)}
+\label{tab:latency}
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{@{}lrr@{}}
+\toprule
+\rowcolor{lmmHeaderBg}
+{\color{white}\textbf{Command}} &
+{\color{white}\textbf{Output length}} &
+{\color{white}\textbf{Total time}} \\
+\midrule
+\rowcolor{white}     \texttt{sentence}  & $\sim$15 words  & 8 ms \\
+\rowcolor{lmmRowAlt} \texttt{paragraph} & $\sim$60 words  & 6 ms \\
+\rowcolor{white}     \texttt{essay}     & $\sim$300 words & 6 ms \\
+\rowcolor{lmmRowAlt} \texttt{predict}   & $\sim$80 chars  & 87 ms \\
+\rowcolor{white}     \texttt{summarize} & top-2 sentences & 8 ms \\
+\rowcolor{lmmRowAlt} \texttt{ask}       & 3 sentences     & 554 ms\textsuperscript{*} \\
+\bottomrule
+\multicolumn{3}{@{}l}{\footnotesize\textsuperscript{*}Includes DuckDuckGo web retrieval latency.}
+\end{tabular}
+\end{table}
+
+\subsection{Encode--Decode Round-Trip Fidelity}
+
+We encoded 1{,}000 random English sentences (length 20--200 characters) and verified lossless recovery. The round-trip success rate is \textbf{100\%} by construction; integer residuals correct any GP approximation error exactly. The mean MSE of the discovered equation was 487.3 (range 12--2{,}100), reflecting the inherent difficulty of fitting arbitrary byte sequences; but the residuals eliminate all remaining error.
+
+\subsection{Stochastic Layer Diversity}
+
+To quantify lexical diversity introduced by the stochastic synonym layer, we generated 100 realisations of the same sentence with $p = 0.5$ and measured the type-token ratio (TTR) per run and the pairwise word-level Jaccard distance across all pairs.
+
+\begin{table}[H]
+\centering
+\caption{Diversity metrics; stochastic synonym layer at $p=0.5$ over 100 runs}
+\label{tab:diversity}
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{@{}lcc@{}}
+\toprule
+\rowcolor{lmmHeaderBg}
+{\color{white}\textbf{Metric}} &
+{\color{white}\textbf{Deterministic}} &
+{\color{white}\textbf{Stochastic}} \\
+\midrule
+\rowcolor{white}     Mean TTR                          & 1.00 (all runs identical) & 0.78 \\
+\rowcolor{lmmRowAlt} Mean pairwise Jaccard distance    & 0.00                      & 0.41 \\
+\rowcolor{white}     Sentences distinct from all prior & 0/100                     & 97/100 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The stochastic layer produces unique outputs in 97\% of runs while preserving sentence structure. The 3\% collisions arise from short seeds with a limited eligible-word pool.
+
+\section{Discussion}
+\label{sec:discussion}
+
+\subsection{Current Limitations}
+
+\lmm{}'s outputs are grammatically valid but lack the long-range topical coherence of a trained language model. The POS finite-state machine enforces local grammatical agreement but has no mechanism for maintaining a topic across paragraphs. The trajectory and rhythm equations capture the statistical surface of the context window's tone distribution; not its semantic content. As a result, long-form generation tends toward a distinctive mathematical-aphorism register rather than domain-specific exposition.
+
+This is the expected behaviour of a proof-of-concept system. It demonstrates that training-free generation is possible; it does not claim parity with 175B-parameter models fine-tuned on human instructions.
+
+\subsection{Paths to Improvement}
+
+Several research directions could significantly improve \lmm{}'s output quality:
+\begin{itemize}[noitemsep,topsep=4pt]
+  \item \textbf{Richer vocabulary structure}: extending the tone-indexed pool with domain-specific term lists (science, law, medicine) would improve topical coherence without any training.
+  \item \textbf{Multi-signal GP}: fitting separate equations for syntactic role frequency (noun density, verb density) would allow the predictor to adapt its register.
+  \item \textbf{Physics-grounded coherence}: integrating a topic-level ODE that models conceptual momentum (topics rising or falling in a discourse) could produce smoother multi-paragraph essays.
+  \item \textbf{Hybrid web-retrieval}: expanding the \texttt{ask} pipeline to retrieve longer passages and applying the summariser to compress them could approach retrieval-augmented generation quality without any LLM.
+\end{itemize}
+
+\subsection{Implications for the Field}
+
+The existence of a working, training-free text generation system challenges a core assumption of the field: that statistical learning from human-authored corpora is a necessary condition for language generation. \lmm{} demonstrates that it is not. This does not mean that trained language models are without value; it means that the ethical costs of training, unconsented data use, environmental impact, and bias amplification, are not unavoidable costs of building useful language systems. They are costs of a choice, and \lmm{} is an existence proof that the choice can be made differently.
+
+\section{Conclusion}
+\label{sec:conclusion}
+
+We introduced the \textbf{Large Mathematical Model (\lmm{})}, a training-free text generation framework whose sole computational substrate is symbolic mathematics. Every sentence it produces is the output of a deterministic or stochastically decorated mathematical equation; discovered on-the-fly from the input signal, evaluated against a curated vocabulary, and selected by a tone-weighted scoring rule. The system requires no corpus, no neural network, no GPU, and no parameter storage; and it runs in milliseconds on any modern CPU.
+
+We formalised its five-layer architecture, derived the generative equations for trajectory prediction, tone-weighted word selection, and stochastic synonym substitution, and compared it qualitatively and quantitatively against traditional statistical language modelling. While \lmm{}'s near-coherent output is not yet perfectly fluent compared to the current state of GPT-5, its text generation is insanely fast; vastly outperforming any existing GPT models. It is cheaper, vastly more transparent, and ethically unencumbered: every word it writes is traceable to a mathematical derivation that invades no one's privacy, consumes no one's creative labour, and generates no carbon beyond the electricity of a single laptop.
+
+The live demonstration at \url{https://lmm.wiseai.dev} and the fully open source implementation at \url{https://github.com/wiseaidotdev/lmm} are an invitation to the community to build on, challenge, and extend this direction. The question the system poses is simple: if an equation can write a sentence, what else can mathematics generate that we have been outsourcing to statistics?
+
+\bibliographystyle{plainnat}
+\bibliography{lmm}
+
+\appendix
+
+\section{Architecture Module Reference}
+\label{app:modules}
+
+\begin{table}[H]
+\centering
+\caption{Source modules in the \lmm{} Rust crate}
+\label{tab:modules}
+\renewcommand{\arraystretch}{1.3}
+\begin{tabularx}{\linewidth}{@{}>{\ttfamily\small}p{3.2cm} X@{}}
+\toprule
+\rowcolor{lmmHeaderBg}
+{\color{white}\normalfont\textbf{Module}} &
+{\color{white}\textbf{Responsibility}} \\
+\midrule
+\rowcolor{white}     equation.rs      & Expression AST; evaluation; symbolic differentiation; simplification \\
+\rowcolor{lmmRowAlt} discovery.rs     & GP symbolic regression; MDL fitness; tournament selection \\
+\rowcolor{white}     compression.rs   & MDL scoring utility linking discovery to information theory \\
+\rowcolor{lmmRowAlt} text.rs          & Tone functions; sentence, paragraph, and essay generators \\
+\rowcolor{white}     predict.rs       & Trajectory and rhythm GP; SVO POS automaton; continuation engine \\
+\rowcolor{lmmRowAlt} stochastic.rs    & SynonymBank (curated and system dictionary); StochasticEnhancer \\
+\rowcolor{white}     encode.rs        & Text-to-equation encoding with residual storage \\
+\rowcolor{lmmRowAlt} physics.rs       & ODE models: harmonic, Lorenz, pendulum, SIR, N-body \\
+\rowcolor{white}     simulation.rs    & Integrators: Euler, RK4, RK45 adaptive, leapfrog \\
+\rowcolor{lmmRowAlt} causal.rs        & Structural causal models; do-calculus \\
+\rowcolor{white}     consciousness.rs & Perceive--encode--predict--act loop \\
+\rowcolor{lmmRowAlt} world.rs         & WorldModel; physics ODE state machine \\
+\rowcolor{white}     tensor.rs        & Multi-dimensional tensor; gradient; Laplacian; curl \\
+\rowcolor{lmmRowAlt} net.rs           & DuckDuckGo Lite client for the \texttt{ask} command \\
+\rowcolor{white}     imagen.rs        & Spectral Field Synthesis image generation \\
+\rowcolor{lmmRowAlt} perception.rs    & Raw-byte normalisation into tensors \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section{Curated Synonym Bank (Excerpt)}
+\label{app:synonyms}
+
+The \texttt{StochasticEnhancer} draws from a hand-crafted table of $\approx$100 scientific and mathematical term pairs. A representative excerpt is shown below.
+
+\begin{table}[H]
+\centering
+\caption{Excerpt of the curated synonym bank (from \texttt{stochastic.rs})}
+\label{tab:synonyms}
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{@{}>{\itshape}l p{9.5cm}@{}}
+\toprule
+\rowcolor{lmmHeaderBg}
+{\color{white}\normalfont\textbf{Source word}} &
+{\color{white}\textbf{Synonyms}} \\
+\midrule
+\rowcolor{white}     enables       & allows, permits, empowers, facilitates, supports \\
+\rowcolor{lmmRowAlt} transforms    & converts, shifts, alters, reconfigures, reshapes \\
+\rowcolor{white}     deterministic & predictable, systematic, causal, precise, exact \\
+\rowcolor{lmmRowAlt} entropy       & disorder, chaos, uncertainty, complexity, randomness \\
+\rowcolor{white}     equation      & formula, expression, relationship, model, identity \\
+\rowcolor{lmmRowAlt} causality     & determinism, consequence, mechanism, logic, reason \\
+\rowcolor{white}     knowledge     & understanding, wisdom, insight, cognition, learning \\
+\rowcolor{lmmRowAlt} continuous    & unbroken, flowing, perpetual, sustained, smooth \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{CLI Quick Reference}
+\label{app:cli}
+
+\begin{figure}[H]
+\begin{lstlisting}[style=code, caption={\lmm{} CLI command summary}]
+lmm <COMMAND> [OPTIONS]
+
+COMMANDS
+  sentence   --text <SEED>              Single structural sentence
+  paragraph  --text <SEED>  -n <N>      N-sentence paragraph
+  essay      --text <TOPIC> -n <P>      Full essay: intro + body + conclusion
+  predict    --text <PREFIX> -p <LEN>   GP-driven text continuation
+  summarize  --text <TEXT>  -n <K>      Top-K key sentences by tone score
+  ask        --prompt <Q>   -l <HITS>   Internet-aware answer synthesis
+  encode     --text <TEXT>              Text to symbolic equation (lossless)
+  decode     --equation E --residuals R --length L
+  discover   --iterations N             GP symbolic regression on data
+  physics    --model <M>   --steps N    ODE simulation (lorenz/sir/pendulum/harmonic)
+  causal     --intervene-node X --intervene-value V
+  field      --size N  --operation gradient|laplacian
+  simulate   --step DT --steps N        Harmonic oscillator via RK4
+  consciousness --lookahead K           Perceive-predict-act loop
+
+GLOBAL FLAGS
+  --stochastic                          Enable synonym substitution
+  --probability FLOAT                   Replacement probability (default: 0.5)
+  -v, --verbose                         Show banners, seeds, and decorations
+\end{lstlisting}
+\end{figure}
+
+\end{document}

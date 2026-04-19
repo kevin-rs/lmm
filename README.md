@@ -782,9 +782,31 @@ Step size is adapted each iteration using the error estimate:
 h_new = 0.9 · h · (tol / error)^0.2
 ```
 
-## 📰 Whitepaper
+## 📰 Publications & Blog Posts
 
-[LLMs are Usefull. LMMs will Break Reality](https://wiseai.dev/blogs/llms-are-usefull-lmms-will-break-reality): the blog post that started this project.
+### Official Whitepaper
+
+The architecture, formal mathematics, and paradigm behind the framework are fully documented in our official whitepaper.
+**[Read the Whitepaper (PDF)](papers/lmm.pdf)**
+
+### Blog Posts
+
+- [LLMs are Usefull. LMMs will Break Reality](https://wiseai.dev/blogs/llms-are-usefull-lmms-will-break-reality): The original blog post that started this project.
+- [Training Is An Evil Concept. LMMs Eliminates It Altogether](https://wiseai.dev/blogs/training-is-an-evil-concept-lmms-eliminates-it-altogether): Exploring the ethical, architectural, and data advantages of entirely training-free models.
+
+## 📝 Citation
+
+If you use LMM in your research, please cite our whitepaper:
+
+```bibtex
+@article{harmouch2026lmm,
+  author  = {Mahmoud Harmouch},
+  title   = {Mathematics Is All You Need: Training-Free Language Generation via
+             Symbolic Regression and Stochastic Determinism},
+  year    = {2026},
+  url     = {https://github.com/wiseaidotdev/lmm}
+}
+```
 
 ## 🤝 Contributing
 

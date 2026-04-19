@@ -1,0 +1,10 @@
+cff-version: 1.2.0
+message: If you use this software, please cite it using these metadata.
+title: LMM
+abstract: Large Mathematical Model: a revolutionary training-free framework for text generation that replaces gradient descent and neural networks with pure mathematics and stochastic determinism.
+authors:
+  - name: "Mahmoud Harmouch"
+version: v0.1.13
+date-released: "2026-04-19"
+license: MIT
+repository-code: "https://github.com/wiseaidotdev/lmm"
