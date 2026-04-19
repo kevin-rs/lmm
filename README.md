@@ -808,6 +808,226 @@ If you use LMM in your research, please cite our whitepaper:
 }
 ```
 
+## 🐍 Python API
+
+Install via pip (built with [maturin](https://github.com/PyO3/maturin)):
+
+```sh
+# Setup environment
+python3 -m venv .venv
+source .venv/bin/activate
+
+# Install package
+pip install lmm-rs
+```
+
+Or build locally:
+
+```sh
+pip install maturin
+maturin develop --features python
+```
+
+### Quick Start
+
+Enter the python interpreter:
+
+```sh
+python3
+```
+
+Run the following code:
+
+```python
+import lmm
+
+# Tensor arithmetic
+t = lmm.Tensor([2, 3], [1.0, 2.0, 3.0, 4.0, 5.0, 6.0])
+print(t.shape)   # [2, 3]
+print(t.norm())
+
+# Symbolic expression
+expr = lmm.Expression.parse("(sin(x) * 2)")
+val  = expr.evaluate({"x": 3.14159})
+deriv = expr.diff("x").simplify()
+print(str(deriv))
+
+# Causal graph
+g = lmm.CausalGraph()
+g.add_node("x", 3.0); g.add_node("y", None)
+g.add_edge("x", "y", 2.0)
+g.forward_pass()
+y_hat = g.counterfactual("x", 10.0, "y")
+print(f"do(x=10) → y = {y_hat}")
+
+# Physics simulation
+osc = lmm.HarmonicOscillator(omega=1.0, x0=1.0, v0=0.0)
+sim = lmm.Simulator(step_size=0.01)
+state = sim.rk4_step_osc(osc, osc.state())
+print(state.data)
+
+# Encode / decode text
+enc = lmm.encode_text("The Pharaohs encoded reality in mathematics.", iterations=80, depth=4)
+original = lmm.decode_message(enc["expression"], enc["length"], enc["residuals"])
+print(original)   # The Pharaohs encoded reality in mathematics.
+
+# Text continuation
+predictor = lmm.TextPredictor(window_size=20, iterations=30, depth=3)
+result = predictor.predict("Wise AI built the first LMM", predict_length=80)
+print(result["continuation"])
+
+# Symbolic regression
+sr = lmm.SymbolicRegression(max_depth=3, iterations=50)
+inputs = [[i * 0.5] for i in range(10)]
+targets = [2.0 * i * 0.5 + 1.0 for i in range(10)]
+eq = sr.fit(inputs, targets)
+print(f"Discovered: {eq}")
+
+# Consciousness (perceive → act)
+brain = lmm.Consciousness(state_len=4, lookahead=5, step_size=0.01)
+new_state = brain.tick(bytes("The Pharaohs built the pyramids", "utf-8"))
+print(new_state)
+
+# Render image
+path = lmm.render_image("ancient egypt mathematics", width=512, height=512,
+                        style="plasma", palette="warm", output="egypt.ppm")
+print(f"Saved to {path}")
+```
+
+### Full API Reference
+
+| Class / Function | Description |
+|---|---|
+| `Tensor(shape, data)` | n-D dense f64 tensor |
+| `Expression.parse(s)` | Parse symbolic expression; `.evaluate(bindings)`, `.diff(var)`, `.simplify()` |
+| `CausalGraph()` | SCM with `add_node`, `add_edge`, `forward_pass`, `intervene`, `counterfactual` |
+| `HarmonicOscillator(ω, x0, v0)` | 1-D oscillator; `.energy()`, `.state()` |
+| `LorenzSystem(σ, ρ, β, x0, y0, z0)` | Lorenz chaotic attractor |
+| `Pendulum(g, l, θ₀, ω₀)` | Nonlinear pendulum |
+| `SIRModel(β, γ, S₀, I₀, R₀)` | Epidemic compartmental model |
+| `Simulator(step_size)` | `.euler_step_osc()`, `.rk4_step_osc()` |
+| `SymbolicRegression(max_depth, iterations, ...)` | GP regressor; `.fit(inputs, targets) → str` |
+| `SentenceGenerator(iterations, depth)` | `.generate(seed) → str` |
+| `ParagraphGenerator(sentence_count, ...)` | `.generate(seed) → str` |
+| `TextSummarizer(sentence_count, ...)` | `.summarize(text) → str` |
+| `TextPredictor(window_size, iterations, depth)` | `.predict(text, predict_length) → dict` |
+| `StochasticEnhancer(p)` | `.enhance(text) → str` |
+| `Field(shape, tensor)` | Spatial field; `.laplacian() → Tensor` |
+| `NeuralOperator(n_modes)` | `.transform(field) → Field` |
+| `Consciousness(state_len, lookahead, step_size)` | `.tick(bytes) → list[float]` |
+| `encode_text(text, iterations, depth)` | Returns `{expression, length, residuals}` |
+| `decode_message(expression, length, residuals)` | Reconstructs original text |
+| `mdl_score(expr, inputs, targets)` | MDL fitness score |
+| `compute_mse(expr, inputs, targets)` | Mean squared error |
+| `r_squared(expr, inputs, targets)` | R² coefficient |
+| `aic_score(n_params, log_likelihood)` | Akaike information criterion |
+| `bic_score(n_params, n_samples, log_likelihood)` | Bayesian information criterion |
+| `render_image(prompt, ...)` | Spectral field synthesis → PPM file |
+
+## 🟨 JavaScript / Node.js API
+
+Install via npm (built with [napi-rs](https://napi.rs)):
+
+```sh
+npm install @wiseaidev/lmm
+```
+
+Or build locally:
+
+```sh
+npm install -g @napi-rs/cli
+napi build --platform --release --features node
+```
+
+### Quick Start
+
+Enter the node interpreter:
+
+```sh
+node
+```
+
+Run the following code:
+
+```js
+// If installed via npm: const lmm = require("@wiseaidev/lmm");
+// For local development:
+const lmm = require(".");
+
+
+// Tensor
+const t = new lmm.Tensor([2, 3], [1, 2, 3, 4, 5, 6]);
+console.log(t.shape);   // [2, 3]
+console.log(t.norm());
+
+// Symbolic expression
+const expr = lmm.Expression.parse("(sin(x) * 2)");
+console.log(expr.evaluate({ x: Math.PI }));
+console.log(expr.diff("x").simplify().toString());
+
+// Causal graph
+const g = new lmm.CausalGraph();
+g.addNode("x", 3.0); g.addNode("y", null);
+g.addEdge("x", "y", 2.0);
+g.forwardPass();
+console.log(g.counterfactual("x", 10.0, "y"));   // 20.0
+
+// Physics
+const osc = new lmm.HarmonicOscillator(1.0, 1.0, 0.0);
+const sim = new lmm.Simulator(0.01);
+const s   = sim.rk4StepOsc(osc, new lmm.Tensor([2], osc.state()));
+console.log(s.data);
+
+// Encode / decode
+const enc = lmm.encodeText("The Pharaohs encoded reality.", 80, 4);
+const dec = lmm.decodeMessage(enc.expression, enc.length, enc.residuals);
+console.log(dec);
+
+// Text continuation
+const predictor = new lmm.TextPredictor(20, 30, 3);
+const result = predictor.predict("Wise AI built the first LMM", 80);
+console.log(result.continuation);
+
+// Symbolic regression
+const sr = new lmm.SymbolicRegression(3, 50, 50);
+const eq = sr.fit([[0.5],[1.0],[1.5]], [2.0, 3.0, 4.0]);
+console.log(eq);
+
+// Consciousness
+const brain = new lmm.Consciousness(4, 5, 0.01);
+const state = brain.tick(Buffer.from("Hello, LMM!"));
+console.log(state);
+
+// Render image
+const path = lmm.renderImage("ancient egypt", 512, 512, "warm", "plasma", 8, "out.ppm");
+console.log("Saved:", path);
+```
+
+### Full API Reference
+
+| Export | Description |
+|---|---|
+| `new Tensor(shape, data)` | n-D f64 tensor; `.shape`, `.data`, `.norm()`, `.scale(s)`, `.add(t)`, `.dot(t)` |
+| `Expression.parse(s)` | Parse symbolic expression; `.evaluate(obj)`, `.diff(var)`, `.simplify()`, `.toString()` |
+| `new CausalGraph()` | SCM graph; `addNode`, `addEdge`, `forwardPass`, `intervene`, `getValue`, `counterfactual`, `topologicalOrder` |
+| `new HarmonicOscillator(ω, x0, v0)` | 1-D oscillator; `.omega`, `.energy()`, `.state()` |
+| `new Simulator(stepSize)` | `.eulerStepOsc(model, state)`, `.rk4StepOsc(model, state)` |
+| `new SymbolicRegression(maxDepth, iterations, popSize?)` | `.fit(inputs, targets) → string` |
+| `new TextPredictor(windowSize?, iterations?, depth?)` | `.predict(text, predictLength?) → {continuation, …}` |
+| `new StochasticEnhancer(p)` | `.enhance(text) → string` |
+| `new SentenceGenerator(iterations?, depth?)` | `.generate(seed) → string` |
+| `new ParagraphGenerator(sentenceCount?, iterations?, depth?)` | `.generate(seed) → string` |
+| `new TextSummarizer(sentenceCount?, iterations?, depth?)` | `.summarize(text) → string` |
+| `new Consciousness(stateLen, lookahead?, stepSize?)` | `.tick(Buffer) → number[]` |
+| `encodeText(text, iterations?, depth?)` | Returns `{expression, length, residuals}` |
+| `decodeMessage(expression, length, residuals)` | Reconstructs original text |
+| `mdlScore(expr, inputs, targets)` | MDL fitness score |
+| `computeMse(expr, inputs, targets)` | Mean squared error |
+| `rSquared(expr, inputs, targets)` | R² coefficient |
+| `aicScore(nParams, logLikelihood)` | Akaike information criterion |
+| `bicScore(nParams, nSamples, logLikelihood)` | Bayesian information criterion |
+| `renderImage(prompt, width?, height?, palette?, style?, components?, output?)` | Spectral field synthesis → PPM |
+
 ## 🤝 Contributing
 
 Contributions are welcome! Feel free to open issues or pull requests.

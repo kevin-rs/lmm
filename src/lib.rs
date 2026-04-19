@@ -39,6 +39,9 @@ pub mod world;
 pub mod app;
 
 #[cfg(all(feature = "python", not(feature = "rust-binary")))]
+pub mod python;
+
+#[cfg(all(feature = "python", not(feature = "rust-binary")))]
 use pyo3::prelude::*;
 
 #[cfg(all(feature = "python", not(feature = "rust-binary")))]
@@ -52,11 +55,15 @@ fn run_cli(args: Vec<String>) -> PyResult<()> {
 
 #[cfg(all(feature = "python", not(feature = "rust-binary")))]
 #[pymodule]
-fn _lmm(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
+fn _lmm(py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add("__version__", env!("CARGO_PKG_VERSION"))?;
     m.add_function(wrap_pyfunction!(run_cli, m)?)?;
+    crate::python::register_python_module(py, m)?;
     Ok(())
 }
+
+#[cfg(all(feature = "node", not(feature = "rust-binary")))]
+pub mod node;
 
 #[cfg(all(feature = "node", not(feature = "rust-binary")))]
 use napi_derive::napi;
