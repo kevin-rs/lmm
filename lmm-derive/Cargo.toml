@@ -1,6 +1,6 @@
 [package]
 name = "lmm-derive"
-version = "0.0.1"
+version = "0.0.2"
 edition = "2024"
 authors = ["Mahmoud Harmouch <oss@wiseai.dev>"]
 license = "MIT"
