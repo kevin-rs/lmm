@@ -13,11 +13,12 @@
 ## 🤔 What does this crate provide?
 
 - **`LmmAgent`**: the batteries-included core agent with hot memory, long-term memory (LTM), tools, planner, reflection, and a time-based scheduler.
-- **`Auto` derive macro**: zero-boilerplate `Agent`, `Functions`, and `AsyncFunctions` implementation for any custom struct.
+- **`Auto` derive macro**: zero-boilerplate `Agent`, `Functions`, and `AsyncFunctions` implementation. Only `agent: LmmAgent` is required in the struct.
 - **`AutoAgent` orchestrator**: manages a heterogeneous pool of agents, running them concurrently with a configurable retry policy.
 - **`agents![]` macro**: ergonomic syntax to declare a typed `Vec<Box<dyn Executor>>`.
-- **DuckDuckGo search**: built-in web search enrichment via the `duckduckgo` crate.
-- **Equation-based generation**: `AsyncFunctions::generate` uses n-gram symbolic regression, not a neural LLM.
+- **`ThinkLoop`**: closed-loop PI controller that drives iterative reasoning toward a goal using Jaccard-error feedback.
+- **DuckDuckGo search** (optional): built-in web search via the `duckduckgo` crate (`--features net`). When real snippets are available, they are returned directly as factual output.
+- **Symbolic generation**: `AsyncFunctions::generate` uses `TextPredictor`, a symbolic regression engine that fits tone and rhythm trajectories to produce text. No neural model, no weights.
 
 ## 📦 Installation
 
@@ -39,30 +40,28 @@ lmm = { version = "0.2.1", features = ["agent"] }
 
 ### 1. Define a custom agent
 
+Your struct only needs one field: `agent: LmmAgent`. Everything else is derived automatically by `#[derive(Auto)]`.
+
 ```rust
 use lmm_agent::prelude::*;
 
 #[derive(Debug, Default, Auto)]
 pub struct ResearchAgent {
-    pub persona:  Cow<'static, str>,
-    pub behavior: Cow<'static, str>,
-    pub status:   Status,
-    pub agent:    LmmAgent,
-    pub memory:   Vec<Message>,
+    pub agent: LmmAgent,
 }
 
 #[async_trait]
 impl Executor for ResearchAgent {
     async fn execute<'a>(
         &'a mut self,
-        _tasks:      &'a mut Task,
+        _task:      &'a mut Task,
         _execute:    bool,
         _browse:     bool,
         _max_tries:  u64,
     ) -> Result<()> {
-        let prompt   = self.agent.persona().to_string();
+        let prompt   = self.agent.behavior.clone();
         let response = self.generate(&prompt).await?;
-
+        println!("{response}");
         self.agent.add_message(Message::new("assistant", response.clone()));
         let _ = self.save_ltm(Message::new("assistant", response)).await;
         self.agent.update(Status::Completed);
@@ -76,12 +75,10 @@ impl Executor for ResearchAgent {
 ```rust
 #[tokio::main]
 async fn main() {
-    let agent = ResearchAgent {
-        persona:  "Research Agent".into(),
-        behavior: "Explore the Rust ecosystem.".into(),
-        agent:    LmmAgent::new("Research Agent".into(), "Explore the Rust ecosystem.".into()),
-        ..Default::default()
-    };
+    let agent = ResearchAgent::new(
+        "Research Agent".into(),
+        "Explore the Rust ecosystem.".into(),
+    );
 
     AutoAgent::default()
         .with(agents![agent])
@@ -102,10 +99,11 @@ async fn main() {
 | `behavior`  | The agent's mission or goal description                                    |
 | `LmmAgent`  | Core struct holding all state (memory, tools, planner, knowledge, profile) |
 | `Message`   | A single chat-style message (`role` + `content`)                           |
-| `Status`    | `Idle` → `Active` → `Completed` (or `InUnitTesting`)                       |
+| `Status`    | `Idle` → `Active` → `Completed` (or `InUnitTesting`, `Thinking`)          |
 | `Auto`      | Derive macro that auto-implements `Agent`, `Functions`, `AsyncFunctions`   |
 | `Executor`  | The only trait you must implement, contains your custom task logic         |
 | `AutoAgent` | The orchestrator that runs a pool of `Executor`s                           |
+| `ThinkLoop` | PI-controller feedback loop that drives iterative multi-step reasoning     |
 
 ## 🔧 LmmAgent Builder API
 
@@ -132,22 +130,23 @@ let agent = LmmAgent::builder()
 
 The `Auto` macro generates a full `AsyncFunctions` implementation for your struct:
 
-| Method             | Description                                                                 |
-| ------------------ | --------------------------------------------------------------------------- |
-| `generate(prompt)` | Equation-based n-gram text generation (no LLM)                              |
-| `search(query)`    | DuckDuckGo web search returning structured results                          |
-| `save_ltm(msg)`    | Persist a message to the agent's long-term memory store                     |
-| `get_ltm()`        | Retrieve all LTM messages as a `Vec<Message>`                               |
-| `ltm_context()`    | Format LTM as a single context string for injection into future generations |
+| Method             | Description                                                                                |
+| ------------------ | ------------------------------------------------------------------------------------------ |
+| `generate(prompt)` | Symbolic text generation via `TextPredictor` (tone + rhythm regression). No LLM.          |
+| `search(query)`    | DuckDuckGo web search (`--features net`). Returns real sentences when available.           |
+| `save_ltm(msg)`    | Persist a message to the agent's long-term memory store                                    |
+| `get_ltm()`        | Retrieve all LTM messages as a `Vec<Message>`                                              |
+| `ltm_context()`    | Format LTM as a single context string                                                      |
 
 ## 🔬 How Generation Works
 
-`AsyncFunctions::generate` dispatches to `LmmAgent::equation_generate`, which:
+`AsyncFunctions::generate` dispatches to `LmmAgent::generate`, which uses the `TextPredictor` engine:
 
-1. Tokenises the prompt into a word list.
-2. Builds a reverse bigram index over the seed corpus.
-3. Walks the index guided by the `simple_ngram_generate` n-gram engine (deterministic, no sampling).
-4. Returns a coherent continuation, no API call, no model weights.
+1. **Seed enrichment**: the prompt is enriched with domain-specific words extracted from the agent's own `behavior` field, so generation is topically grounded.
+1. **Tone trajectory**: symbolic regression fits a mathematical expression mapping `token_position → mean_byte_value` over the input window.
+1. **Rhythm trajectory**: a second regression fits `token_position → word_length`.
+1. **Token selection**: for each new token, the expected POS is determined from a grammar transition table; the word scoring lowest on a `tone_diff + length_diff + recency_penalty` score is chosen from curated vocabulary pools.
+1. **Net mode** (`--features net`): if DuckDuckGo returns snippets, the sentence with the highest token overlap against the request is returned **directly**, producing factual, real-world text instead of symbolic continuation.
 
 ## 📄 License
 

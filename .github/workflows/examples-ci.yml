@@ -1,0 +1,34 @@
+name: Examples CI
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  test-examples:
+    name: Test Examples
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Check Examples
+        run: cargo check --examples --workspace --all-features
+
+      - name: Run Research Agent (Offline)
+        run: cargo run --example research_agent
+
+      - name: Run Research Agent (Online/Net)
+        run: cargo run --example research_agent --features net
+
+      - name: Run Planning Agent
+        run: cargo run --example planning_agent
+
+      - name: Run Multi-Agent Pipeline
+        run: cargo run --example multi_agent_pipeline
+
+      - name: Run Custom Agent
+        run: cargo run --example custom_agent

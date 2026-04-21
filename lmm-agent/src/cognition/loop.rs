@@ -186,15 +186,16 @@ impl ThinkLoop {
             let current_reward = signal.reward;
             final_error = signal.error;
 
-            self.hot.push(MemoryEntry::new(
-                if observation.is_empty() {
-                    query
-                } else {
-                    observation
-                },
-                current_reward,
-                step,
-            ));
+            let fact_content = if observation.is_empty() {
+                String::new()
+            } else {
+                observation
+            };
+
+            if !fact_content.is_empty() {
+                self.hot
+                    .push(MemoryEntry::new(fact_content, current_reward, step));
+            }
 
             signals.push(signal);
 

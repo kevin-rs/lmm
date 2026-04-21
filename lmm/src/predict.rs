@@ -374,22 +374,34 @@ fn detect_pos(word: &str) -> CoarsePos {
 /// Returns the most probable next POS given the recent history and current step counter.
 fn expected_next_pos(history: &[CoarsePos], step: usize) -> CoarsePos {
     match history.last().copied() {
-        Some(CoarsePos::Article) => CoarsePos::Adjective,
+        Some(CoarsePos::Article) => match step % 3 {
+            0 => CoarsePos::Adjective,
+            1 => CoarsePos::Noun,
+            _ => CoarsePos::Adjective,
+        },
         Some(CoarsePos::Adjective) => CoarsePos::Noun,
-        Some(CoarsePos::Noun) => match step % 5 {
+        Some(CoarsePos::Noun) => match step % 7 {
             0 => CoarsePos::Verb,
             1 => CoarsePos::Preposition,
             2 => CoarsePos::Conjunction,
             3 => CoarsePos::Verb,
-            _ => CoarsePos::Adverb,
+            4 => CoarsePos::Adverb,
+            5 => CoarsePos::Preposition,
+            _ => CoarsePos::Verb,
         },
-        Some(CoarsePos::Verb) => match step % 2 {
+        Some(CoarsePos::Verb) => match step % 5 {
             0 => CoarsePos::Article,
-            _ => CoarsePos::Preposition,
+            1 => CoarsePos::Noun,
+            2 => CoarsePos::Preposition,
+            3 => CoarsePos::Adverb,
+            _ => CoarsePos::Article,
         },
         Some(CoarsePos::Preposition) => CoarsePos::Article,
         Some(CoarsePos::Conjunction) => CoarsePos::Article,
-        Some(CoarsePos::Adverb) => CoarsePos::Adjective,
+        Some(CoarsePos::Adverb) => match step % 2 {
+            0 => CoarsePos::Verb,
+            _ => CoarsePos::Adjective,
+        },
         Some(CoarsePos::Unknown) => CoarsePos::Preposition,
         None => CoarsePos::Article,
     }
@@ -461,9 +473,9 @@ fn score_word(
     target_length: usize,
     recency: &HashMap<String, usize>,
 ) -> f64 {
-    let r = recency.get(word).copied().unwrap_or(0) as f64 * 6.0;
+    let r = recency.get(word).copied().unwrap_or(0) as f64 * 15.0;
     let tone_diff = (word_tone(word) - target_tone).abs();
-    let len_diff = (word.len() as f64 - target_length as f64).abs() * 0.8;
+    let len_diff = (word.len() as f64 - target_length as f64).abs() * 1.2;
     r + tone_diff + len_diff
 }
 
@@ -583,6 +595,7 @@ impl TextPredictor {
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn select_content_word(
         &self,
         next_pos: CoarsePos,
@@ -607,8 +620,10 @@ impl TextPredictor {
         "world".to_string()
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn select_from_context(
         &self,
+        next_pos: CoarsePos,
         window_tokens: &[String],
         trajectory_eq: &Expression,
         rhythm_eq: &Expression,
@@ -618,8 +633,11 @@ impl TextPredictor {
     ) -> String {
         let target_tone = stable_target_tone(trajectory_eq, pos, context_tones);
         let target_len = stable_target_length(rhythm_eq, pos);
-        let refs: Vec<&str> = window_tokens.iter().map(String::as_str).collect();
-        best_from_pool(&refs, target_tone, target_len, recency)
+
+        let mut candidates: Vec<&str> = window_tokens.iter().map(String::as_str).collect();
+        candidates.extend_from_slice(Self::curated_pool_for_pos(next_pos));
+
+        best_from_pool(&candidates, target_tone, target_len, recency)
             .unwrap_or("world")
             .to_string()
     }
@@ -676,8 +694,7 @@ impl TextPredictor {
         let rhythm_eq = self.fit_rhythm(&positions, &lengths)?;
 
         let mut pos_history: Vec<CoarsePos> = window_tokens.iter().map(|t| detect_pos(t)).collect();
-        let mut suffix_context: Vec<String> =
-            window_tokens[window_tokens.len().saturating_sub(3)..].to_vec();
+        let mut suffix_context: Vec<String> = Vec::new();
         let mut continuation = String::new();
         let mut pos = window_tokens.len() as f64;
         let mut recency: HashMap<String, usize> = HashMap::new();
@@ -692,7 +709,7 @@ impl TextPredictor {
                     let next_pos = expected_next_pos(&pos_history, step);
                     if is_function_pos(next_pos) {
                         pick_function_word(next_pos, &recency).to_string()
-                    } else if self.lexicon.is_some() {
+                    } else if let Some(_lexicon) = &self.lexicon {
                         self.select_content_word(
                             next_pos,
                             &trajectory_eq,
@@ -703,6 +720,7 @@ impl TextPredictor {
                         )
                     } else {
                         self.select_from_context(
+                            next_pos,
                             window_tokens,
                             &trajectory_eq,
                             &rhythm_eq,

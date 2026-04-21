@@ -25,7 +25,7 @@ flowchart TD
     L["LmmAgent\n(core state)"]
     E["Executor trait\n(your logic)"]
     O["AutoAgent\norchestrator"]
-    G["equation_generate\n(n-gram symbolic)"]
+    G["TextPredictor\n(symbolic regression)"]
     S["DuckDuckGo search\n(optional enrichment)"]
 
     U -->|"delegates to"| L
@@ -39,22 +39,13 @@ flowchart TD
 
 ```rust
 use lmm_agent::prelude::*;
-use lmm_agent::types::{Task, Status, Message};
-use lmm_agent::agent::LmmAgent;
-use lmm_agent::runtime::AutoAgent;
-use lmm_agent::agents;
-use std::borrow::Cow;
 use async_trait::async_trait;
-use anyhow::Result;
 
 // Define your agent struct
+// The `Auto` macro only requires one field: `agent: LmmAgent`
 #[derive(Debug, Default, Auto)]
 pub struct MyAgent {
-    pub persona:  Cow<'static, str>,
-    pub behavior: Cow<'static, str>,
-    pub status:   Status,
-    pub agent:    LmmAgent,
-    pub memory:   Vec<Message>,
+    pub agent: LmmAgent,
 }
 
 // Implement only your task logic
@@ -65,7 +56,7 @@ impl Executor for MyAgent {
         _tasks: &'a mut Task,
         _execute: bool, _browse: bool, _max_tries: u64,
     ) -> Result<()> {
-        let prompt   = self.agent.persona().to_string();
+        let prompt   = self.agent.behavior.clone();
         let response = self.generate(&prompt).await?;
         self.agent.add_message(Message::new("assistant", response));
         self.agent.update(Status::Completed);
@@ -74,13 +65,12 @@ impl Executor for MyAgent {
 }
 
 // Run
-fn main() {
-    let agent = MyAgent {
-        persona:  "Research Agent".into(),
-        behavior: "Survey the Rust ecosystem.".into(),
-        agent:    LmmAgent::new("Research Agent".into(), "Survey the Rust ecosystem.".into()),
-        ..Default::default()
-    };
+#[tokio::main]
+async fn main() {
+    let agent = MyAgent::new(
+        "Research Agent".into(),
+        "Survey the Rust ecosystem.".into()
+    );
     let _ = AutoAgent::default()
         .with(agents![agent]);
 }

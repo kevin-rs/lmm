@@ -12,19 +12,11 @@ Pulled in automatically with `lmm-agent`. No manual dependency needed.
 
 ```rust
 use lmm_agent::prelude::*;
-use lmm_agent::types::{Message, Status, Task};
-use lmm_agent::agent::LmmAgent;
-use std::borrow::Cow;
 use async_trait::async_trait;
-use anyhow::Result;
 
 #[derive(Debug, Default, Auto)]
 pub struct MyAgent {
-    pub persona:  Cow<'static, str>,
-    pub behavior: Cow<'static, str>,
-    pub status:   Status,
-    pub agent:    LmmAgent,
-    pub memory:   Vec<Message>,
+    pub agent: LmmAgent,
 }
 
 #[async_trait]
@@ -36,7 +28,7 @@ impl Executor for MyAgent {
 }
 ```
 
-`Auto` inspects the five required fields above and generates three trait implementations automatically.
+`Auto` inspects the required field `agent: LmmAgent` and generates three trait implementations automatically.
 
 ### Generated traits
 
@@ -47,7 +39,9 @@ Delegates all methods to the inner `LmmAgent` field:
 ```rust,ignore
 impl Agent for MyAgent {
     fn new(persona: Cow<'static, str>, behavior: Cow<'static, str>) -> Self {
-         unimplemented!()
+         let mut s = Self::default();
+         s.agent = LmmAgent::new(persona, behavior);
+         s
     }
     fn persona(&self)     -> &str          { &self.agent.persona }
     fn behavior(&self)    -> &str          { &self.agent.behavior }
@@ -84,22 +78,12 @@ impl AsyncFunctions for MyAgent {
 Fields beyond the five required ones are ignored by `Auto`. You can freely add domain-specific data:
 
 ```rust
-extern crate lmm_agent;
 use lmm_agent::prelude::*;
-use lmm_agent::types::{Message, Status, Task};
-use lmm_agent::agent::LmmAgent;
-use std::borrow::Cow;
 use std::collections::HashMap;
-use async_trait::async_trait;
-use anyhow::Result;
 
 #[derive(Debug, Default, Auto)]
 pub struct DataAgent {
-    pub persona:   Cow<'static, str>,
-    pub behavior:  Cow<'static, str>,
-    pub status:    Status,
     pub agent:     LmmAgent,
-    pub memory:    Vec<Message>,
     // custom fields, ignored by the macro
     pub db_url:    String,
     pub cache:     HashMap<String, String>,
@@ -118,13 +102,9 @@ impl Executor for DataAgent {
 
 | Field      | Type                | Must be named      |
 | ---------- | ------------------- | ------------------ |
-| `persona`  | `Cow<'static, str>` | exactly `persona`  |
-| `behavior` | `Cow<'static, str>` | exactly `behavior` |
-| `status`   | `Status`            | exactly `status`   |
 | `agent`    | `LmmAgent`          | exactly `agent`    |
-| `memory`   | `Vec<Message>`      | exactly `memory`   |
 
-Compile errors will occur if any required field is missing or misnamed.
+Compile errors will occur if the `agent` field is missing or misnamed.
 
 ## 📄 License
 

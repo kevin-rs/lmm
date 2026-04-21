@@ -390,35 +390,93 @@ impl LmmAgent {
     /// ```
     pub async fn generate(&mut self, request: &str) -> Result<String> {
         #[cfg(feature = "net")]
-        let seed = {
+        let result = {
             let corpus = self.search(request, 5).await.unwrap_or_default();
-            if corpus.is_empty() {
-                request.to_string()
+            if let Some(sentence) = Self::best_sentence(&corpus, request) {
+                sentence
             } else {
-                format!("{request} {corpus}")
+                let seed = if corpus.is_empty() {
+                    Self::domain_seed(request, &self.behavior)
+                } else {
+                    format!("{request} {corpus}")
+                };
+                Self::symbolic_continuation(seed)
             }
         };
 
         #[cfg(not(feature = "net"))]
-        let seed = request.to_string();
-
-        // Ensure the seed has at least two words (TextPredictor requirement).
-        let seed = if seed.split_whitespace().count() < 2 {
-            format!("{seed} and")
-        } else {
-            seed
+        let result = {
+            let seed = Self::domain_seed(request, &self.behavior);
+            Self::symbolic_continuation(seed)
         };
-
-        let predictor = TextPredictor::new(20, 40, 3);
-        let result = predictor
-            .predict_continuation(&seed, 120)
-            .map(|c| format!("{} {}", seed.trim(), c.continuation.trim()))
-            .unwrap_or_else(|_| seed.clone());
 
         self.add_message(Message::new("user", request.to_string()));
         self.add_message(Message::new("assistant", result.clone()));
-
         Ok(result)
+    }
+
+    fn domain_seed(request: &str, behavior: &str) -> String {
+        const STOP: &[&str] = &[
+            "a", "an", "the", "and", "or", "of", "to", "in", "is", "are", "be", "for", "on", "at",
+            "by", "as", "it", "its",
+        ];
+        let domain_words: Vec<&str> = behavior
+            .split_whitespace()
+            .filter(|w| {
+                let lw = w.to_ascii_lowercase();
+                !STOP.contains(&lw.as_str()) && w.len() > 3
+            })
+            .take(6)
+            .collect();
+
+        let mut seed = request.to_string();
+        if !domain_words.is_empty() {
+            seed.push(' ');
+            seed.push_str(&domain_words.join(" "));
+        }
+        if seed.split_whitespace().count() < 2 {
+            seed.push_str(" and");
+        }
+        seed
+    }
+
+    /// Runs the symbolic predictor on a seed and returns the continuation.
+    fn symbolic_continuation(seed: String) -> String {
+        let mut predictor = TextPredictor::new(20, 40, 3);
+        if let Ok(lex) = lmm::lexicon::Lexicon::load_system() {
+            predictor = predictor.with_lexicon(lex);
+        }
+        predictor
+            .predict_continuation(&seed, 120)
+            .map(|c| format!("{} {}", seed.trim(), c.continuation.trim()))
+            .unwrap_or(seed)
+    }
+
+    /// Returns the sentence from `corpus` with the highest token overlap with `query`.
+    /// Returns `None` if no sentence has meaningful overlap.
+    #[cfg(feature = "net")]
+    fn best_sentence(corpus: &str, query: &str) -> Option<String> {
+        use std::collections::HashSet;
+        let query_tokens: HashSet<String> = query
+            .split_whitespace()
+            .map(|w| w.to_ascii_lowercase())
+            .collect();
+
+        corpus
+            .split(['.', '!', '?'])
+            .map(str::trim)
+            .filter(|s| s.split_whitespace().count() >= 5)
+            .map(|sentence| {
+                let sentence_tokens: HashSet<String> = sentence
+                    .split_whitespace()
+                    .map(|w| w.to_ascii_lowercase())
+                    .collect();
+                let overlap = query_tokens.intersection(&sentence_tokens).count();
+                (overlap, sentence.to_string())
+            })
+            .filter(|(overlap, _)| *overlap >= 2)
+            .max_by_key(|(overlap, _)| *overlap)
+            .map(|(_, sentence)| sentence)
     }
 
     /// Searches DuckDuckGo for `query` (requires `net` feature).

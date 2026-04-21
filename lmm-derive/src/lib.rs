@@ -41,29 +41,19 @@ use syn::{DeriveInput, parse_macro_input};
 /// # Example
 ///
 /// ```rust,ignore
-/// extern crate lmm_agent;
-/// use lmm_derive::{Auto, Executor};
 /// use lmm_agent::prelude::*;
-/// use lmm_agent::types::{Task, Status, Message};
-/// use lmm_agent::agent::LmmAgent;
-/// use std::borrow::Cow;
-/// use async_trait::async_trait;
-/// use anyhow::Result;
 ///
+/// // Minimum required struct - only `agent: LmmAgent`.
 /// #[derive(Debug, Default, Auto)]
 /// pub struct MyAgent {
-///     pub persona:  Cow<'static, str>,
-///     pub behavior: Cow<'static, str>,
-///     pub status:   Status,
-///     pub agent:    LmmAgent,
-///     pub memory:   Vec<Message>,
+///     pub agent: LmmAgent,
 /// }
 ///
 /// #[async_trait]
 /// impl Executor for MyAgent {
 ///     async fn execute<'a>(
 ///         &'a mut self,
-///         tasks: &'a mut Task,
+///         _task: &'a mut Task,
 ///         _execute: bool,
 ///         _browse: bool,
 ///         _max_tries: u64,
@@ -84,11 +74,9 @@ pub fn derive_auto(input: TokenStream) -> TokenStream {
                 persona: ::std::borrow::Cow<'static, str>,
                 behavior: ::std::borrow::Cow<'static, str>,
             ) -> Self {
-                let mut agent = Self::default();
-                agent.agent = ::lmm_agent::agent::LmmAgent::new(persona, behavior.clone());
-                agent.persona = agent.agent.persona.clone().into();
-                agent.behavior = agent.agent.behavior.clone().into();
-                agent
+                let mut s = Self::default();
+                s.agent = ::lmm_agent::agent::LmmAgent::new(persona, behavior);
+                s
             }
 
             fn update(&mut self, status: ::lmm_agent::types::Status) {
