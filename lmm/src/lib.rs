@@ -6,7 +6,11 @@
 // except according to those terms.
 
 #![cfg_attr(docsrs, feature(doc_cfg))]
-#![doc = include_str!("../README.md")]
+#![doc = include_str!("../../README.md")]
+#![doc = include_str!("../../AGENT.md")]
+#![doc = include_str!("../../DERIVE.md")]
+#![doc = include_str!("../../RUST.md")]
+#![doc = include_str!("../../WASM.md")]
 
 pub mod causal;
 #[cfg(feature = "cli")]

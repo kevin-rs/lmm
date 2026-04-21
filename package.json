@@ -44,8 +44,8 @@
   },
   "scripts": {
     "artifacts": "napi artifacts",
-    "build": "napi build --platform --release --features node",
-    "build:debug": "napi build --platform --features node",
+    "build": "napi build --package lmm --platform --release --features node && mv lmm/*.node ./ && mv lmm/index.js ./ && mv lmm/index.d.ts ./",
+    "build:debug": "napi build --package lmm --platform --features node && mv lmm/*.node ./ && mv lmm/index.js ./ && mv lmm/index.d.ts ./",
     "prepublishOnly": "napi prepublish -t npm",
     "version": "napi version"
   },

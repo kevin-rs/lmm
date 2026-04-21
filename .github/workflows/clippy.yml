@@ -21,4 +21,4 @@ jobs:
       - name: 🧪 Run Clippy
         env:
           PROTOC: ${{ env.PROTOC }}
-        run: cargo clippy --tests --all-features -- -D warnings
+        run: cargo clippy --workspace --tests --all-features -- -D warnings

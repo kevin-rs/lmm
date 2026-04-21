@@ -499,7 +499,7 @@ impl NBodySystem {
     /// ```
     /// use lmm::physics::NBodySystem;
     /// let expr = NBodySystem::gravitational_equation();
-    /// assert_eq!(expr.to_string(), "(-(G * (m1 * (m2 / (r)^(2)))))");
+    /// assert_eq!(expr.to_string(), "(-(G * (m1 * (m2 / (r ^ 2)))))");
     /// ```
     pub fn gravitational_equation() -> Expression {
         Neg(Box::new(Mul(

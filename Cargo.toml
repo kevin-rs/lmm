@@ -1,84 +1,51 @@
-[package]
-name = "lmm"
-version = "0.1.15"
-edition = "2024"
-authors = ["Mahmoud Harmouch <oss@wiseai.dev>"]
-license = "MIT"
-description = "A language agnostic framework for emulating reality."
-documentation = "https://docs.rs/lmm"
-repository = "https://github.com/wiseaidotdev/lmm"
-homepage = "https://wiseai.dev"
-categories = ["science"]
-keywords = ["asi", "ai", "machine-learning", "llm", "lmm"]
+[workspace]
+resolver = "2"
+members = [
+    "lmm",
+    "lmm-derive",
+    "lmm-agent",
+]
 exclude = [
-    "/assets",
-    "/tests",
-    ".*",
-    "/examples",
-    "/papers",
-    "/python",
-    "/bin",
-    "package.json",
-    "package-lock.json",
-    "pyproject.toml"
+    "target",
 ]
 
-[lib]
-crate-type = ["cdylib", "rlib"]
-
-[dependencies]
+[workspace.dependencies]
+anyhow = "1.0.102"
 thiserror = "2.0.18"
 serde_json = "1.0.149"
-anyhow = "1.0.102"
-rand = "0.10.1"
 serde = { version = "1.0.228", features = ["derive"] }
+rand = "0.10.1"
+tokio = { version = "1.52.1", features = ["full"] }
+async-trait = "0.1.89"
+futures = "0.3.32"
 tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["fmt", "env-filter"] }
+tracing-appender = "0.2"
 phf = { version = "0.13.1", features = ["macros"] }
 strum = { version = "0.28.0", features = ["derive"] }
 strum_macros = "0.28.0"
-clap = { version = "4.6.0", features = ["derive"], optional = true }
-tokio = { version = "1.51.1", features = ["full"], optional = true }
-tracing-subscriber = { version = "0.3", features = ["fmt", "env-filter"], optional = true }
-tracing-appender = { version = "0.2", optional = true }
-duckduckgo = { version = "0.2.3", optional = true }
-pyo3 = { version = "0.28.3", features = ["extension-module"], optional = true }
-napi = { version = "3.8.5", default-features = false, features = ["napi4"], optional = true }
-napi-derive = { version = "3.5.4", optional = true }
+chrono = { version = "0.4.44", features = ["serde"] }
+uuid = { version = "1.23.1", features = ["v4"] }
+derivative = "2.2.0"
+clap = { version = "4.6.1", features = ["derive"] }
+duckduckgo = "0.3.1"
+reqwest = { version = "0.12", features = ["json"] }
+pyo3 = { version = "0.28.3", features = ["extension-module"] }
+napi = { version = "3.8.5", default-features = false, features = ["napi4"] }
+napi-derive = "3.5.4"
+napi-build = "2.3.1"
+syn = { version = "2.0.117", features = ["full"] }
+quote = "1.0.45"
+proc-macro2 = "1.0.106"
+lmm-derive = { version = "0.0.1", path = "./lmm-derive" }
+lmm-agent = { version = "0.0.1", path = "./lmm-agent" }
+lmm = { version = "0.1.15", path = "./lmm" }
 
-[target.'cfg(target_arch = "wasm32")'.dependencies]
-getrandom = { version = "0.4", features = ["wasm_js"] }
+[profile.dev]
+split-debuginfo = "off"
 
-[build-dependencies]
-napi-build = { version = "2.3.1", optional = true }
-
-[[bin]]
-name = "lmm"
-path = "src/bin/lmm.rs"
-required-features = ["rust-binary"]
-
-[features]
-default = []
-rust-binary = ["cli"]
-cli = [
-    "clap",
-    "tokio",
-    "tracing-subscriber",
-    "tracing-appender",
-]
-net = [
-    "duckduckgo",
-    "tokio",
-]
-wasm-net = ["duckduckgo"]
-python = ["pyo3", "cli", "net"]
-node = ["napi", "napi-derive", "napi-build", "cli", "net"]
-
-[package.metadata.docs.rs]
-all-features = true
-rustdoc-args = ["--cfg", "docsrs"]
-
-[badges]
-maintenance = { status = "actively-developed" }
+[profile.test]
+split-debuginfo = "off"
 
 [profile.release]
 opt-level = "z"

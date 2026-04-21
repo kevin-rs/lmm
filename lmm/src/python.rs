@@ -10,6 +10,7 @@
 //! This module exposes the LMM core engine to Python via [`pyo3`].
 //! Every type and function is gated behind the `python` cargo feature.
 
+use crate::traits::Causal;
 use pyo3::exceptions::{PyRuntimeError, PyValueError};
 use pyo3::prelude::*;
 use pyo3::types::PyDict;
@@ -161,7 +162,6 @@ impl PyCausalGraph {
     }
 
     pub fn intervene(&mut self, var: &str, value: f64) -> PyResult<()> {
-        use crate::traits::Causal;
         self.inner
             .intervene(var, value)
             .map_err(|e| PyValueError::new_err(e.to_string()))
@@ -606,7 +606,8 @@ impl PyTextPredictor {
             .predict_continuation(text, predict_length.unwrap_or(60))
             .map_err(|e| PyRuntimeError::new_err(e.to_string()))?;
         let d = PyDict::new(py);
-        d.set_item("continuation", result.continuation)?;
+        let full_text = format!("{}{}", text, result.continuation);
+        d.set_item("continuation", full_text)?;
         d.set_item(
             "trajectory_equation",
             format!("{}", result.trajectory_equation),

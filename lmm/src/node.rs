@@ -10,6 +10,7 @@
 //! This module exposes the LMM core engine to Node.js via [`napi-derive`].
 //! Every type and function is gated behind the `node` cargo feature.
 
+use crate::traits::Causal;
 use napi_derive::napi;
 use std::collections::HashMap;
 
@@ -155,7 +156,6 @@ impl NapiCausalGraph {
 
     #[napi]
     pub fn intervene(&mut self, var: String, value: f64) -> napi::Result<()> {
-        use crate::traits::Causal;
         self.inner
             .intervene(&var, value)
             .map_err(|e| napi::Error::from_reason(e.to_string()))
@@ -419,7 +419,7 @@ impl NapiTextPredictor {
         self.inner
             .predict_continuation(&text, predict_length.unwrap_or(60) as usize)
             .map(|r| PredictionResult {
-                continuation: r.continuation,
+                continuation: format!("{}{}", text, r.continuation),
                 trajectory_equation: format!("{}", r.trajectory_equation),
                 rhythm_equation: format!("{}", r.rhythm_equation),
                 window_used: r.window_used as u32,

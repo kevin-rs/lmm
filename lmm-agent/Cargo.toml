@@ -1,0 +1,36 @@
+[package]
+name = "lmm-agent"
+version = "0.0.1"
+edition = "2024"
+authors = ["Mahmoud Harmouch <oss@wiseai.dev>"]
+license = "MIT"
+description = "Equation-based autonomous agent framework for the lmm ecosystem."
+documentation = "https://docs.rs/lmm-agent"
+repository = "https://github.com/wiseaidotdev/lmm"
+homepage = "https://wiseai.dev"
+keywords = ["lmm", "agent", "ai", "autonomous", "duckduckgo"]
+categories = ["science"]
+
+[dependencies]
+anyhow = { workspace = true }
+thiserror = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tokio = { workspace = true }
+async-trait = { workspace = true }
+futures = { workspace = true }
+tracing = { workspace = true }
+chrono = { workspace = true }
+uuid = { workspace = true }
+rand = { workspace = true }
+lmm-derive = { workspace = true }
+lmm = { workspace = true }
+
+duckduckgo = { workspace = true, optional = true }
+
+[dev-dependencies]
+tokio = { workspace = true }
+
+[features]
+default = []
+net = ["duckduckgo"]

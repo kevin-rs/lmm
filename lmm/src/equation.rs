@@ -323,7 +323,7 @@ impl fmt::Display for Expression {
             Self::Sub(l, r) => write!(f, "({} - {})", l, r),
             Self::Mul(l, r) => write!(f, "({} * {})", l, r),
             Self::Div(l, r) => write!(f, "({} / {})", l, r),
-            Self::Pow(base, exp) => write!(f, "({})^({})", base, exp),
+            Self::Pow(base, exp) => write!(f, "({} ^ {})", base, exp),
             Self::Neg(e) => write!(f, "(-{})", e),
             Self::Abs(e) => write!(f, "|{}|", e),
             Self::Sin(e) => write!(f, "sin({})", e),
@@ -398,18 +398,12 @@ impl<'a> Parser<'a> {
                 let rhs = self.parse_expr()?;
                 self.skip_ws();
                 self.expect(b')')?;
-                self.skip_ws();
-                if self.peek() == Some(b'^') {
-                    self.consume();
-                    self.skip_ws();
-                    let exp = self.parse_expr()?;
-                    return Ok(Expression::Pow(Box::new(lhs), Box::new(exp)));
-                }
                 match op {
                     b'+' => Ok(Expression::Add(Box::new(lhs), Box::new(rhs))),
                     b'-' => Ok(Expression::Sub(Box::new(lhs), Box::new(rhs))),
                     b'*' => Ok(Expression::Mul(Box::new(lhs), Box::new(rhs))),
                     b'/' => Ok(Expression::Div(Box::new(lhs), Box::new(rhs))),
+                    b'^' => Ok(Expression::Pow(Box::new(lhs), Box::new(rhs))),
                     _ => Err(format!("unknown operator {:?}", op as char)),
                 }
             }

@@ -1,0 +1,25 @@
+[package]
+name = "lmm-derive"
+version = "0.0.1"
+edition = "2024"
+authors = ["Mahmoud Harmouch <oss@wiseai.dev>"]
+license = "MIT"
+description = "Proc-macro derive crates for the lmm agent framework."
+documentation = "https://docs.rs/lmm-derive"
+repository = "https://github.com/wiseaidotdev/lmm"
+homepage = "https://wiseai.dev"
+keywords = ["lmm", "agent", "macro", "derive", "builder"]
+
+[lib]
+proc-macro = true
+
+[dependencies]
+syn = { workspace = true }
+quote = { workspace = true }
+proc-macro2 = { workspace = true }
+async-trait = { workspace = true }
+
+[dev-dependencies]
+lmm-agent = { workspace = true, features = ["net"] }
+lmm-derive = { workspace = true }
+anyhow = { workspace = true }

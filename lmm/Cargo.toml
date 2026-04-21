@@ -1,0 +1,81 @@
+[package]
+name = "lmm"
+version = "0.1.15"
+edition = "2024"
+authors = ["Mahmoud Harmouch <oss@wiseai.dev>"]
+license = "MIT"
+description = "A language agnostic framework for emulating reality."
+documentation = "https://docs.rs/lmm"
+repository = "https://github.com/wiseaidotdev/lmm"
+homepage = "https://wiseai.dev"
+categories = ["science"]
+keywords = ["asi", "ai", "machine-learning", "llm", "lmm"]
+exclude = [
+    "/assets",
+    "/tests",
+    ".*",
+    "/examples",
+    "/papers",
+    "/python",
+    "/bin",
+    "package.json",
+    "package-lock.json",
+    "pyproject.toml",
+]
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+thiserror = { workspace = true }
+serde_json = { workspace = true }
+anyhow = { workspace = true }
+rand = { workspace = true }
+serde = { workspace = true }
+tracing = { workspace = true }
+phf = { workspace = true }
+strum = { workspace = true }
+strum_macros = { workspace = true }
+clap = { workspace = true, optional = true }
+tokio = { workspace = true, optional = true }
+tracing-subscriber = { workspace = true, optional = true }
+tracing-appender = { workspace = true, optional = true }
+duckduckgo = { workspace = true, optional = true }
+pyo3 = { workspace = true, optional = true }
+napi = { workspace = true, optional = true }
+napi-derive = { workspace = true, optional = true }
+
+[dev-dependencies]
+lmm-agent = { workspace = true }
+lmm-derive = { workspace = true }
+async-trait = { workspace = true }
+tokio = { workspace = true, features = ["full"] }
+yew = "0.21"
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+getrandom = { version = "0.4", features = ["wasm_js"] }
+
+[build-dependencies]
+napi-build = { workspace = true, optional = true }
+
+[[bin]]
+name = "lmm"
+path = "src/bin/lmm.rs"
+required-features = ["rust-binary"]
+
+[features]
+default = []
+rust-binary = ["cli", "net"]
+cli = [
+    "clap",
+    "tokio",
+    "tracing-subscriber",
+    "tracing-appender",
+]
+net = [
+    "duckduckgo",
+    "tokio",
+]
+wasm-net = ["duckduckgo"]
+python = ["pyo3", "cli", "net"]
+node = ["napi", "napi-derive", "napi-build", "cli", "net"]

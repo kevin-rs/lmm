@@ -33,6 +33,7 @@ Issues = "https://github.com/wiseaidotdev/lmm/issues"
 features = ["python"]
 module-name = "lmm._lmm"
 python-source = "python"
+manifest-path = "lmm/Cargo.toml"
 
 [project.scripts]
 lmm = "lmm.__main__:main"
