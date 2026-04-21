@@ -34,7 +34,7 @@
 use crate::traits::agent::Agent;
 use crate::types::{
     Capability, ContextManager, Knowledge, Message, Planner, Profile, Reflection, Status, Task,
-    TaskScheduler, Tool,
+    TaskScheduler, ThinkResult, Tool,
 };
 use anyhow::Result;
 use lmm::predict::TextPredictor;
@@ -44,6 +44,9 @@ use std::collections::HashSet;
 use duckduckgo::browser::Browser;
 #[cfg(feature = "net")]
 use duckduckgo::user_agents::get as get_ua;
+
+use crate::cognition::r#loop::ThinkLoop;
+use crate::cognition::search::SearchOracle;
 
 // LmmAgent struct
 
@@ -375,15 +378,15 @@ impl LmmAgent {
     ///
     /// # Examples
     ///
-    /// ```rust,no_run
-    /// # #[tokio::main]
-    /// # async fn main() {
-    /// use lmm_agent::agent::LmmAgent;
-    /// let mut agent = LmmAgent::new("Tester".into(), "Rust is fast.".into());
-    /// let result = agent.generate("the universe reveals its truth").await;
-    /// assert!(result.is_ok());
-    /// assert!(!result.unwrap().is_empty());
-    /// # }
+    /// ```rust
+    /// #[tokio::main]
+    /// async fn main() {
+    ///     use lmm_agent::agent::LmmAgent;
+    ///     let mut agent = LmmAgent::new("Tester".into(), "Rust is fast.".into());
+    ///     let result = agent.generate("the universe reveals its truth").await;
+    ///     assert!(result.is_ok());
+    ///     assert!(!result.unwrap().is_empty());
+    /// }
     /// ```
     pub async fn generate(&mut self, request: &str) -> Result<String> {
         #[cfg(feature = "net")]
@@ -447,6 +450,105 @@ impl LmmAgent {
     #[cfg(not(feature = "net"))]
     pub async fn search(&self, _query: &str, _limit: usize) -> Result<String> {
         Ok(String::new())
+    }
+
+    /// Runs the closed-loop **ThinkLoop** reasoning cycle toward `goal`.
+    ///
+    /// The agent transitions through `Status::Thinking` and back to
+    /// `Status::Completed`. At the end of the run the cold-store archive is
+    /// serialised into the agent's `long_term_memory` so knowledge persists
+    /// across multiple `think()` calls.
+    ///
+    /// ## Parameters
+    ///
+    /// * `goal` - natural-language task description (the setpoint).
+    ///
+    /// Defaults used internally:
+    /// - `max_iterations = 10`
+    /// - `convergence_threshold = 0.25`
+    /// - `k_proportional = 1.0`
+    /// - `k_integral = 0.05`
+    ///
+    /// Use [`LmmAgent::think_with`] for fine-grained control.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// #[tokio::main]
+    /// async fn main() {
+    ///     use lmm_agent::agent::LmmAgent;
+    ///
+    ///     let mut agent = LmmAgent::new("Researcher".into(), "Explore Rust.".into());
+    ///     let result = agent.think("What is Rust ownership?").await.unwrap();
+    ///     assert!(result.steps > 0);
+    ///     assert!(result.final_error >= 0.0 && result.final_error <= 1.0);
+    /// }
+    /// ```
+    pub async fn think(&mut self, goal: &str) -> Result<ThinkResult> {
+        self.think_with(goal, 10, 0.25, 1.0, 0.05).await
+    }
+
+    /// Like [`think`](Self::think) but exposes all ThinkLoop parameters.
+    ///
+    /// # Arguments
+    ///
+    /// * `goal`                  - natural-language goal / setpoint.
+    /// * `max_iterations`        - maximum feedback loop iterations (≥ 1).
+    /// * `convergence_threshold` - Jaccard error threshold ∈ [0, 1].
+    /// * `k_proportional`        - proportional gain Kp.
+    /// * `k_integral`            - integral gain Ki.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// #[tokio::main]
+    /// async fn main() {
+    ///     use lmm_agent::agent::LmmAgent;
+    ///
+    ///     let mut agent = LmmAgent::new("Researcher".into(), "Explore Rust.".into());
+    ///     let result = agent
+    ///         .think_with("Rust memory safety", 5, 0.3, 1.0, 0.05)
+    ///         .await
+    ///         .unwrap();
+    ///     assert!(result.steps <= 5);
+    /// }
+    /// ```
+    pub async fn think_with(
+        &mut self,
+        goal: &str,
+        max_iterations: usize,
+        convergence_threshold: f64,
+        k_proportional: f64,
+        k_integral: f64,
+    ) -> Result<ThinkResult> {
+        self.status = Status::Thinking;
+
+        let mut oracle = SearchOracle::new(5);
+        let mut lp = ThinkLoop::new(
+            goal,
+            max_iterations,
+            convergence_threshold,
+            k_proportional,
+            k_integral,
+        );
+        let result = lp.run(&mut oracle).await;
+
+        for entry in lp.cold.all() {
+            self.long_term_memory
+                .push(Message::new("think", entry.content.clone()));
+        }
+
+        self.add_message(Message::new("think:goal", goal.to_string()));
+        self.add_message(Message::new(
+            "think:result",
+            format!(
+                "converged={} steps={} error={:.3}",
+                result.converged, result.steps, result.final_error
+            ),
+        ));
+
+        self.status = Status::Completed;
+        Ok(result)
     }
 }
 
@@ -528,3 +630,10 @@ impl Agent for LmmAgent {
         &mut self.context
     }
 }
+
+// Copyright 2026 Mahmoud Harmouch.
+//
+// Licensed under the MIT license
+// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
+// option. This file may not be copied, modified, or distributed
+// except according to those terms.

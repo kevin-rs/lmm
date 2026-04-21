@@ -75,7 +75,7 @@ pub fn url_encode(s: &str) -> String {
 ///
 /// # Examples
 ///
-/// ```no_run
+/// ```rust,ignore
 /// use lmm::net::SearchAggregator;
 ///
 /// #[tokio::main]

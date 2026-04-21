@@ -41,7 +41,6 @@ static SYSTEM_DICT_PATHS: &[&str] = &[
 /// ```no_run
 /// use lmm::lexicon::Lexicon;
 ///
-/// // Requires a system dictionary - skip in CI
 /// let lex = Lexicon::load_system().unwrap();
 /// assert!(lex.word_count() > 1000);
 /// ```

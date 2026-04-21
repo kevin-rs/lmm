@@ -20,7 +20,13 @@ pub use crate::traits::composite::AgentFunctions;
 pub use crate::traits::functions::{AsyncFunctions, Executor, Functions};
 pub use crate::types::{
     Capability, ContextManager, Goal, Knowledge, Message, Planner, Profile, Reflection, Route,
-    ScheduledTask, Scope, Status, Task, TaskScheduler, Tool, ToolName, default_eval_fn,
+    ScheduledTask, Scope, Status, Task, TaskScheduler, ThinkResult, Tool, ToolName,
+    default_eval_fn,
+};
+
+pub use crate::cognition::{
+    CognitionSignal, ColdStore, GoalEvaluator, HotStore, MemoryEntry, Reflector, SearchOracle,
+    ThinkLoop, ThinkLoopBuilder, error_from_texts,
 };
 
 // External re-exports used in macro-generated code and user impls.

@@ -14,7 +14,7 @@ Or as a feature of the root `lmm` crate:
 
 ```toml
 [dependencies]
-lmm = { version = "0.1", features = ["agent"] }
+lmm = { version = "0.2.0", features = ["agent"] }
 ```
 
 ## 🏗️ Core Architecture
@@ -113,7 +113,7 @@ let agent = LmmAgent::builder()
 | `LmmAgent`        | Core agent struct (memory, tools, planner, knowledge, etc.)  |
 | `LmmAgentBuilder` | Fluent builder for `LmmAgent`                                |
 | `Message`         | A chat message with `role` + `content`                       |
-| `Status`          | `Idle`, `Active`, `InUnitTesting`, `Completed`               |
+| `Status`          | `Idle`, `Active`, `InUnitTesting`, `Completed`, `Thinking`  |
 | `Knowledge`       | Map of fact keys to natural-language descriptions            |
 | `Planner`         | Ordered list of `Goal`s with priorities and completion flags |
 | `Profile`         | Agent personality traits and behavioural script              |
@@ -129,6 +129,7 @@ The `Auto` derive macro generates:
 // All below methods are generated automatically
 async fn generate(&mut self, prompt: &str) -> Result<String>;
 async fn search(&self, query: &str)         -> Result<Vec<LiteSearchResult>>;
+async fn think(&mut self, goal: &str)       -> Result<ThinkResult>;
 async fn save_ltm(&mut self, msg: Message)  -> Result<()>;
 async fn get_ltm(&self)                     -> Result<Vec<Message>>;
 async fn ltm_context(&self)                 -> Result<String>;
@@ -138,7 +139,8 @@ async fn ltm_context(&self)                 -> Result<String>;
 
 ```sh
 Idle → [execute() called] → Active → [task done] → Completed
-                                   ↘ [testing]  → InUnitTesting
+                                   ↘ [think() called]   → Thinking → Completed
+                                   ↘ [testing]          → InUnitTesting
 ```
 
 ## 📎 Further Reading

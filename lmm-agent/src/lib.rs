@@ -61,6 +61,7 @@
 //! ```
 
 pub mod agent;
+pub mod cognition;
 pub mod error;
 pub mod prelude;
 pub mod runtime;

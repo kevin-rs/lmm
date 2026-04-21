@@ -50,7 +50,7 @@ lmm-agent = { workspace = true }
 lmm-derive = { workspace = true }
 async-trait = { workspace = true }
 tokio = { workspace = true, features = ["full"] }
-yew = "0.21"
+yew = "0.23"
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 getrandom = { version = "0.4", features = ["wasm_js"] }

@@ -25,6 +25,14 @@ replace = "version: v'{new_version}'"
 search = lmm = "{current_version}"
 replace = lmm = "{new_version}"
 
+[bumpversion:file:AGENT.md]
+search = lmm = { version = "{current_version}", features = ["agent"] }
+replace = lmm = { version = "{new_version}", features = ["agent"] }
+
 [bumpversion:file:WASM.md]
 search = lmm = { version = "{current_version}", default-features = false, features = ["wasm-net"] }
 replace = lmm = { version = "{new_version}", default-features = false, features = ["wasm-net"] }
+
+[bumpversion:file:lmm-agent/README.md]
+search = lmm = { version = "{current_version}", features = ["agent"] }
+replace = lmm = { version = "{new_version}", features = ["agent"] }
