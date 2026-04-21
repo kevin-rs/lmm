@@ -39,7 +39,7 @@ quote = "1.0.45"
 proc-macro2 = "1.0.106"
 lmm-derive = { version = "0.0.2", path = "./lmm-derive" }
 lmm-agent = { version = "0.0.3", path = "./lmm-agent" }
-lmm = { version = "0.2.2", path = "./lmm" }
+lmm = { version = "0.2.3", path = "./lmm" }
 
 [profile.dev]
 split-debuginfo = "off"

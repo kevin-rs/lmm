@@ -33,7 +33,7 @@ Or enable it as a feature from the root `lmm` workspace:
 
 ```toml
 [dependencies]
-lmm = { version = "0.2.2", features = ["agent"] }
+lmm = { version = "0.2.3", features = ["agent"] }
 ```
 
 ## 🚀 Quick Start

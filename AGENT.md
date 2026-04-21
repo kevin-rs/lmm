@@ -14,7 +14,7 @@ Or as a feature of the root `lmm` crate:
 
 ```toml
 [dependencies]
-lmm = { version = "0.2.2", features = ["agent"] }
+lmm = { version = "0.2.3", features = ["agent"] }
 ```
 
 ## 🏗️ Core Architecture
