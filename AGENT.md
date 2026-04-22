@@ -7,7 +7,7 @@ The `lmm-agent` crate provides an equation-based, training-free autonomous agent
 ```toml
 # Cargo.toml
 [dependencies]
-lmm-agent = "0.0.2"
+lmm-agent = "0.0.4"
 ```
 
 Or as a feature of the root `lmm` crate:

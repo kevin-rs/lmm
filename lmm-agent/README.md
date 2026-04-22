@@ -74,10 +74,10 @@ flowchart TD
 
 ```toml
 [dependencies]
-lmm-agent = "0.0.3"
+lmm-agent = "0.0.4"
 
 # Optional features:
-# lmm-agent = { version = "0.0.3", features = ["net", "knowledge"] }
+# lmm-agent = { version = "0.0.4", features = ["net", "knowledge"] }
 ```
 
 ## 🚀 Quick Start
