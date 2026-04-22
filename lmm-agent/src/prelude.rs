@@ -25,8 +25,9 @@ pub use crate::types::{
 };
 
 pub use crate::cognition::{
-    CognitionSignal, ColdStore, GoalEvaluator, HotStore, MemoryEntry, Reflector, SearchOracle,
-    ThinkLoop, ThinkLoopBuilder, error_from_texts,
+    CognitionSignal, ColdStore, DocumentChunk, GoalEvaluator, HotStore, KnowledgeIndex,
+    KnowledgeSource, MemoryEntry, Reflector, SearchOracle, ThinkLoop, ThinkLoopBuilder,
+    error_from_texts,
 };
 
 // External re-exports used in macro-generated code and user impls.

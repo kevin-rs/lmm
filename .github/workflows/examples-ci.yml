@@ -32,3 +32,9 @@ jobs:
 
       - name: Run Custom Agent
         run: cargo run --example custom_agent
+
+      - name: Run Knowledge Agent
+        run: cargo run --example knowledge_agent
+
+      - name: Run PDF Research Agent
+        run: cargo run --example pdf_research_agent --features knowledge
