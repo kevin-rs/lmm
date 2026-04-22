@@ -23,7 +23,7 @@ use chrono::prelude::*;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::borrow::Cow;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fmt;
 
 /// The current operational status of an agent through its lifecycle.
@@ -487,6 +487,104 @@ pub struct ThinkResult {
 
     /// The per-step signals produced during the run.
     pub signals: Vec<crate::cognition::signal::CognitionSignal>,
+}
+
+/// The active learning paradigms for the HELM engine.
+///
+/// Each variant corresponds to one sub-module of [`crate::cognition::learning`].
+/// The `Smart` variant enables all paradigms simultaneously.
+///
+/// # Examples
+///
+/// ```
+/// use lmm_agent::types::LearningMode;
+/// use std::collections::HashSet;
+///
+/// let all = LearningMode::all();
+/// assert!(all.contains(&LearningMode::QTable));
+/// assert!(all.contains(&LearningMode::Informal));
+/// ```
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum LearningMode {
+    /// Tabular Bellman TD(0) Q-learning.
+    QTable,
+    /// Prototype-based task meta-adaptation.
+    MetaAdapt,
+    /// Knowledge distillation from cold store to KnowledgeIndex.
+    Distill,
+    /// Self-federated Q-table aggregation across agents.
+    Federated,
+    /// Elastic memory guard (Fisher-analog importance pinning).
+    Elastic,
+    /// Informal PMI co-occurrence mining.
+    Informal,
+    /// Enables all paradigms (alias for the full set).
+    Smart,
+}
+
+impl LearningMode {
+    /// Returns a `HashSet` containing all seven `LearningMode` variants.
+    pub fn all() -> HashSet<LearningMode> {
+        [
+            LearningMode::QTable,
+            LearningMode::MetaAdapt,
+            LearningMode::Distill,
+            LearningMode::Federated,
+            LearningMode::Elastic,
+            LearningMode::Informal,
+            LearningMode::Smart,
+        ]
+        .into_iter()
+        .collect()
+    }
+}
+
+/// A single SARS (State-Action-Reward-State') experience tuple for Q-learning.
+///
+/// # Examples
+///
+/// ```
+/// use lmm_agent::types::ExperienceRecord;
+/// use lmm_agent::cognition::learning::q_table::ActionKey;
+///
+/// let xp = ExperienceRecord { state: 1, action: ActionKey::Narrow, reward: 0.7, next_state: 2 };
+/// assert_eq!(xp.reward, 0.7);
+/// ```
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ExperienceRecord {
+    /// FNV-1a hash of the current state (query token bag).
+    pub state: u64,
+    /// The query-refinement action applied.
+    pub action: crate::cognition::learning::q_table::ActionKey,
+    /// Reward received (from `CognitionSignal::reward`).
+    pub reward: f64,
+    /// FNV-1a hash of the next state (observation token bag).
+    pub next_state: u64,
+}
+
+/// A serialisable snapshot of an agent's Q-table and reward total for federated exchange.
+///
+/// # Examples
+///
+/// ```
+/// use lmm_agent::types::AgentSnapshot;
+/// use lmm_agent::cognition::learning::q_table::QTable;
+///
+/// let snap = AgentSnapshot {
+///     agent_id: "agent-1".into(),
+///     q_table: QTable::new(0.1, 0.9, 0.0, 1.0, 0.0),
+///     total_reward: 3.5,
+/// };
+/// assert_eq!(snap.agent_id, "agent-1");
+/// ```
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AgentSnapshot {
+    /// Unique identifier of the originating agent.
+    pub agent_id: String,
+    /// The agent's full Q-table at snapshot time.
+    pub q_table: crate::cognition::learning::q_table::QTable,
+    /// Total accumulated reward the agent achieved.
+    pub total_reward: f64,
 }
 
 impl Task {

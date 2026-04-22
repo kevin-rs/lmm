@@ -32,6 +32,9 @@
 //! <https://github.com/wiseaidotdev/autogpt/blob/main/autogpt/src/agents/agent.rs>
 
 use crate::cognition::knowledge::{KnowledgeIndex, KnowledgeSource, ingest as knowledge_ingest};
+use crate::cognition::learning::engine::LearningEngine;
+use crate::cognition::learning::q_table::{ActionKey, QTable};
+use crate::cognition::learning::store::LearningStore;
 use crate::traits::agent::Agent;
 use crate::types::{
     Capability, ContextManager, Knowledge, Message, Planner, Profile, Reflection, Status, Task,
@@ -39,6 +42,7 @@ use crate::types::{
 };
 use anyhow::Result;
 use lmm::predict::TextPredictor;
+use std::borrow::Cow;
 use std::collections::HashSet;
 
 #[cfg(feature = "net")]
@@ -120,6 +124,9 @@ pub struct LmmAgent {
 
     /// Queryable knowledge base built from ingested documents or URLs.
     pub knowledge_index: KnowledgeIndex,
+
+    /// Optional HELM learning engine for in-environment lifelong learning.
+    pub learning_engine: Option<LearningEngine>,
 }
 
 // LmmAgentBuilder
@@ -168,6 +175,7 @@ pub struct LmmAgentBuilder {
     capabilities: Option<HashSet<Capability>>,
     tasks: Option<Vec<Task>>,
     knowledge_index: Option<KnowledgeIndex>,
+    learning_engine: Option<Option<LearningEngine>>,
 }
 
 impl LmmAgentBuilder {
@@ -267,6 +275,12 @@ impl LmmAgentBuilder {
         self
     }
 
+    /// Attaches a [`LearningEngine`] for in-environment lifelong learning.
+    pub fn learning_engine(mut self, engine: impl Into<Option<LearningEngine>>) -> Self {
+        self.learning_engine = Some(engine.into());
+        self
+    }
+
     /// Constructs the [`LmmAgent`].
     ///
     /// # Panics
@@ -306,6 +320,7 @@ impl LmmAgentBuilder {
             capabilities: self.capabilities.unwrap_or_default(),
             tasks: self.tasks.unwrap_or_default(),
             knowledge_index: self.knowledge_index.unwrap_or_default(),
+            learning_engine: self.learning_engine.unwrap_or(None),
         }
     }
 }
@@ -611,6 +626,22 @@ impl LmmAgent {
         );
         let result = lp.run(&mut oracle).await;
 
+        if let Some(engine) = &mut self.learning_engine {
+            let mut prev_state = QTable::state_key(goal);
+            for signal in &result.signals {
+                let next_state = QTable::state_key(&signal.observation);
+                let action = engine.recommend_action(prev_state, goal, signal.step);
+                engine.record_step(signal, prev_state, action, next_state);
+                prev_state = next_state;
+            }
+            let avg_reward = if result.steps > 0 {
+                result.signals.iter().map(|s| s.reward).sum::<f64>() / result.steps as f64
+            } else {
+                0.0
+            };
+            engine.end_of_episode(&lp.cold, &mut self.knowledge_index, goal, avg_reward);
+        }
+
         for entry in lp.cold.all() {
             self.long_term_memory
                 .push(Message::new("think", entry.content.clone()));
@@ -697,15 +728,91 @@ impl LmmAgent {
     pub fn answer_from_knowledge(&self, question: &str) -> Option<String> {
         self.knowledge_index.answer(question, 5)
     }
+
+    /// Saves the current [`LearningEngine`] state to `path` as JSON.
+    ///
+    /// Returns `Ok(())` when no learning engine is attached.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use lmm_agent::agent::LmmAgent;
+    /// use lmm_agent::cognition::learning::engine::LearningEngine;
+    /// use lmm_agent::cognition::learning::config::LearningConfig;
+    ///
+    /// let mut agent = LmmAgent::builder()
+    ///     .persona("Learner")
+    ///     .behavior("Learn.")
+    ///     .learning_engine(LearningEngine::new(LearningConfig::default()))
+    ///     .build();
+    ///
+    /// agent.save_learning(std::path::Path::new("/tmp/agent_helm.json")).unwrap();
+    /// ```
+    pub fn save_learning(&self, path: &std::path::Path) -> Result<()> {
+        if let Some(engine) = &self.learning_engine {
+            LearningStore::save(engine, path)
+        } else {
+            Ok(())
+        }
+    }
+
+    /// Loads a previously saved [`LearningEngine`] state from `path` and
+    /// attaches it to this agent, replacing any existing engine.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use lmm_agent::agent::LmmAgent;
+    /// use lmm_agent::cognition::learning::engine::LearningEngine;
+    /// use lmm_agent::cognition::learning::config::LearningConfig;
+    ///
+    /// let mut agent = LmmAgent::builder()
+    ///     .persona("Learner")
+    ///     .behavior("Learn.")
+    ///     .learning_engine(LearningEngine::new(LearningConfig::default()))
+    ///     .build();
+    ///
+    /// let path = std::path::Path::new("/tmp/agent_helm_load.json");
+    /// agent.save_learning(path).unwrap();
+    /// agent.load_learning(path).unwrap();
+    /// ```
+    pub fn load_learning(&mut self, path: &std::path::Path) -> Result<()> {
+        let engine = LearningStore::load(path)?;
+        self.learning_engine = Some(engine);
+        Ok(())
+    }
+
+    /// Returns the Q-table–recommended action for the current query string,
+    /// or `None` when no learning engine is attached or the state is unknown.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use lmm_agent::agent::LmmAgent;
+    /// use lmm_agent::cognition::learning::engine::LearningEngine;
+    /// use lmm_agent::cognition::learning::config::LearningConfig;
+    ///
+    /// let mut agent = LmmAgent::builder()
+    ///     .persona("Learner")
+    ///     .behavior("Learn.")
+    ///     .learning_engine(LearningEngine::new(LearningConfig::default()))
+    ///     .build();
+    ///
+    /// let action = agent.recall_learned("rust memory safety", 0);
+    /// // No experience recorded yet, so the engine explores freely.
+    /// assert!(action.is_some());
+    /// ```
+    pub fn recall_learned(&mut self, query: &str, step: usize) -> Option<ActionKey> {
+        let engine = self.learning_engine.as_mut()?;
+        let state = QTable::state_key(query);
+        Some(engine.recommend_action(state, query, step))
+    }
 }
 
 // Agent trait implementation
 
 impl Agent for LmmAgent {
-    fn new(
-        persona: std::borrow::Cow<'static, str>,
-        behavior: std::borrow::Cow<'static, str>,
-    ) -> Self {
+    fn new(persona: Cow<'static, str>, behavior: Cow<'static, str>) -> Self {
         LmmAgent::new(persona, behavior)
     }
 

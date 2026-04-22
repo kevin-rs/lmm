@@ -33,6 +33,11 @@
 
 use std::collections::HashMap;
 
+#[cfg(feature = "net")]
+use duckduckgo::browser::Browser;
+#[cfg(feature = "net")]
+use duckduckgo::user_agents::get as get_ua;
+
 /// DuckDuckGo search client with an in-process query cache.
 ///
 /// # Examples
@@ -91,9 +96,6 @@ impl SearchOracle {
     /// Issues the actual DuckDuckGo request (only compiled when `net` is on).
     #[cfg(feature = "net")]
     async fn fetch_live(&self, query: &str) -> String {
-        use duckduckgo::browser::Browser;
-        use duckduckgo::user_agents::get as get_ua;
-
         let browser = Browser::new();
         let ua = get_ua("firefox").unwrap_or("Mozilla/5.0");
         match browser

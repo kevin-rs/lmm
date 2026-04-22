@@ -43,7 +43,11 @@
 
 use anyhow::{Result, anyhow};
 use lmm::text::TextSummarizer;
-use std::collections::HashMap;
+use std::cmp::Ordering;
+use std::collections::{HashMap, HashSet};
+use std::fs;
+#[cfg(feature = "knowledge")]
+use std::io::Cursor;
 use std::path::{Path, PathBuf};
 
 /// A source from which an agent can acquire knowledge.
@@ -174,7 +178,7 @@ impl KnowledgeIndex {
             .filter(|(_, s)| *s > 0.0)
             .collect();
 
-        scores.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+        scores.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(Ordering::Equal));
         scores
             .into_iter()
             .take(top_k)
@@ -208,7 +212,7 @@ impl KnowledgeIndex {
     fn rebuild_doc_freq(&mut self) {
         self.doc_freq.clear();
         for chunk in &self.chunks {
-            let mut seen = std::collections::HashSet::new();
+            let mut seen = HashSet::new();
             for token in &chunk.tokens {
                 if seen.insert(token) {
                     *self.doc_freq.entry(token.clone()).or_insert(0) += 1;
@@ -267,8 +271,9 @@ impl DocumentParser for PdfParser {
     }
 
     fn parse_bytes(&self, bytes: &[u8]) -> Result<String> {
+        #[cfg(feature = "knowledge")]
         use lopdf::Document;
-        use std::io::Cursor;
+
         let doc =
             Document::load_from(Cursor::new(bytes)).map_err(|e| anyhow!("lopdf error: {e}"))?;
         let mut out = String::new();
@@ -303,7 +308,7 @@ pub async fn ingest(index: &mut KnowledgeIndex, source: KnowledgeSource) -> Resu
 
         KnowledgeSource::Dir(dir) => {
             let mut total = 0;
-            let entries = std::fs::read_dir(&dir)
+            let entries = fs::read_dir(&dir)
                 .map_err(|e| anyhow!("Cannot read dir {}: {e}", dir.display()))?;
             for entry in entries.flatten() {
                 let p = entry.path();
@@ -331,7 +336,7 @@ fn ingest_file(index: &mut KnowledgeIndex, path: &Path) -> Result<usize> {
         .find(|p| p.supports_extension(&ext))
         .ok_or_else(|| anyhow!("No parser for '{}' (extension: .{})", path.display(), ext))?;
 
-    let bytes = std::fs::read(path).map_err(|e| anyhow!("Cannot read {}: {e}", path.display()))?;
+    let bytes = fs::read(path).map_err(|e| anyhow!("Cannot read {}: {e}", path.display()))?;
     let text = parser.parse_bytes(&bytes)?;
     let label = path.file_name().and_then(|n| n.to_str()).unwrap_or("file");
     Ok(index.ingest_text(label, &text))

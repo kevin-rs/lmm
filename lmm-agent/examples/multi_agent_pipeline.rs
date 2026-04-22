@@ -202,7 +202,6 @@ async fn main() {
 
     let researcher = ResearcherAgent {
         agent: LmmAgent::new("Researcher".into(), topic.into()),
-        ..Default::default()
     };
 
     let planner = PlannerAgent {
@@ -234,12 +233,10 @@ async fn main() {
                 ],
             })
             .build(),
-        ..Default::default()
     };
 
     let summariser = SummaryAgent {
         agent: LmmAgent::new("Summary Agent".into(), topic.into()),
-        ..Default::default()
     };
 
     match AutoAgent::default()

@@ -49,6 +49,7 @@ use crate::traits::composite::AgentFunctions;
 use crate::types::{Scope, Task};
 use anyhow::{Result, anyhow};
 use futures::future::join_all;
+use std::borrow::Cow;
 use std::sync::Arc;
 use tokio::{sync::Mutex, task};
 use tracing::{debug, error};
@@ -267,7 +268,7 @@ impl AutoAgent {
             let agent_persona = agent_arc.lock().await.get_agent().persona.clone();
 
             let task_payload = Arc::new(Mutex::new(Task {
-                description: std::borrow::Cow::Owned(agent_persona.clone()),
+                description: Cow::Owned(agent_persona.clone()),
                 scope: Some(Scope {
                     crud,
                     auth,

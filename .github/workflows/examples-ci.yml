@@ -38,3 +38,12 @@ jobs:
 
       - name: Run PDF Research Agent
         run: cargo run --example pdf_research_agent --features knowledge
+
+      - name: Run Full Lifecycle Agent
+        run: cargo run --example full_lifecycle
+
+      - name: Run Learning Agent
+        run: cargo run --example learning_agent
+
+      - name: Run Federated Learning
+        run: cargo run --example federated_learning
