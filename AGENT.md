@@ -7,14 +7,7 @@ The `lmm-agent` crate provides an equation-based, training-free autonomous agent
 ```toml
 # Cargo.toml
 [dependencies]
-lmm-agent = "0.0.4"
-```
-
-Or as a feature of the root `lmm` crate:
-
-```toml
-[dependencies]
-lmm = { version = "0.2.4", features = ["agent"] }
+lmm-agent = "0.1.0"
 ```
 
 ## 🏗️ Core Architecture

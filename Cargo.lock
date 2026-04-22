@@ -1642,7 +1642,7 @@ dependencies = [
 
 [[package]]
 name = "lmm-agent"
-version = "0.0.4"
+version = "0.1.0"
 dependencies = [
  "anyhow",
  "async-trait",
