@@ -31,6 +31,7 @@
 //! Adapted from the `autogpt` project's `agents/agent.rs`:
 //! <https://github.com/wiseaidotdev/autogpt/blob/main/autogpt/src/agents/agent.rs>
 
+use crate::cognition::knowledge::{KnowledgeIndex, KnowledgeSource, ingest as knowledge_ingest};
 use crate::traits::agent::Agent;
 use crate::types::{
     Capability, ContextManager, Knowledge, Message, Planner, Profile, Reflection, Status, Task,
@@ -116,6 +117,9 @@ pub struct LmmAgent {
 
     /// Active task queue.
     pub tasks: Vec<Task>,
+
+    /// Queryable knowledge base built from ingested documents or URLs.
+    pub knowledge_index: KnowledgeIndex,
 }
 
 // LmmAgentBuilder
@@ -163,6 +167,7 @@ pub struct LmmAgentBuilder {
     context: Option<ContextManager>,
     capabilities: Option<HashSet<Capability>>,
     tasks: Option<Vec<Task>>,
+    knowledge_index: Option<KnowledgeIndex>,
 }
 
 impl LmmAgentBuilder {
@@ -256,6 +261,12 @@ impl LmmAgentBuilder {
         self
     }
 
+    /// Pre-populates the knowledge index with an existing [`KnowledgeIndex`].
+    pub fn knowledge_index(mut self, index: KnowledgeIndex) -> Self {
+        self.knowledge_index = Some(index);
+        self
+    }
+
     /// Constructs the [`LmmAgent`].
     ///
     /// # Panics
@@ -294,6 +305,7 @@ impl LmmAgentBuilder {
             context: self.context.unwrap_or_default(),
             capabilities: self.capabilities.unwrap_or_default(),
             tasks: self.tasks.unwrap_or_default(),
+            knowledge_index: self.knowledge_index.unwrap_or_default(),
         }
     }
 }
@@ -389,6 +401,14 @@ impl LmmAgent {
     /// }
     /// ```
     pub async fn generate(&mut self, request: &str) -> Result<String> {
+        if !self.knowledge_index.is_empty()
+            && let Some(answer) = self.knowledge_index.answer(request, 5)
+        {
+            self.add_message(Message::new("user", request.to_string()));
+            self.add_message(Message::new("assistant", answer.clone()));
+            return Ok(answer);
+        }
+
         #[cfg(feature = "net")]
         let result = {
             let corpus = self.search(request, 5).await.unwrap_or_default();
@@ -607,6 +627,75 @@ impl LmmAgent {
 
         self.status = Status::Completed;
         Ok(result)
+    }
+
+    /// Ingests a [`KnowledgeSource`] into this agent's [`KnowledgeIndex`].
+    ///
+    /// Returns the number of new sentence-level chunks added to the index.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use lmm_agent::agent::LmmAgent;
+    /// use lmm_agent::cognition::knowledge::KnowledgeSource;
+    ///
+    /// #[tokio::main]
+    /// async fn main() {
+    ///     let mut agent = LmmAgent::new("KA Agent".into(), "Rust ownership.".into());
+    ///     let n = agent
+    ///         .ingest(KnowledgeSource::RawText(
+    ///             "Rust prevents data races at compile time through its ownership system. \
+    ///              The borrow checker enforces these rules statically.".into(),
+    ///         ))
+    ///         .await
+    ///         .unwrap();
+    ///     assert!(n > 0);
+    /// }
+    /// ```
+    pub async fn ingest(&mut self, source: KnowledgeSource) -> Result<usize> {
+        knowledge_ingest(&mut self.knowledge_index, source).await
+    }
+
+    /// Returns the top-`top_k` relevant passages from the knowledge index for `question`.
+    ///
+    /// Returns an empty `Vec` when the index contains no matching material.
+    pub fn query_knowledge(&self, question: &str, top_k: usize) -> Vec<String> {
+        self.knowledge_index
+            .query(question, top_k)
+            .into_iter()
+            .map(|c| c.text.clone())
+            .collect()
+    }
+
+    /// Produces an extractive answer to `question` from the knowledge index.
+    ///
+    /// Retrieves the top-5 relevant chunks, concatenates them, and runs
+    /// [`lmm::text::TextSummarizer`] to select the most informative sentences.
+    ///
+    /// Returns `None` when the index is empty or no relevant material is found.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use lmm_agent::agent::LmmAgent;
+    /// use lmm_agent::cognition::knowledge::KnowledgeSource;
+    ///
+    /// #[tokio::main]
+    /// async fn main() {
+    ///     let mut agent = LmmAgent::new("QA Agent".into(), "Rust.".into());
+    ///     agent
+    ///         .ingest(KnowledgeSource::RawText(
+    ///             "Rust prevents data races through ownership. \
+    ///              The borrow checker ensures memory safety at compile time.".into(),
+    ///         ))
+    ///         .await
+    ///         .unwrap();
+    ///     let answer = agent.answer_from_knowledge("How does Rust handle memory?");
+    ///     assert!(answer.is_some());
+    /// }
+    /// ```
+    pub fn answer_from_knowledge(&self, question: &str) -> Option<String> {
+        self.knowledge_index.answer(question, 5)
     }
 }
 

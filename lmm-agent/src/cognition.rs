@@ -50,6 +50,7 @@
 //! * [Control theory - Wikipedia](https://en.wikipedia.org/wiki/Control_theory)
 
 pub mod goal;
+pub mod knowledge;
 pub mod r#loop;
 pub mod memory;
 pub mod reflect;
@@ -57,6 +58,7 @@ pub mod search;
 pub mod signal;
 
 pub use goal::GoalEvaluator;
+pub use knowledge::{DocumentChunk, KnowledgeIndex, KnowledgeSource};
 pub use r#loop::{ThinkLoop, ThinkLoopBuilder};
 pub use memory::{ColdStore, HotStore, MemoryEntry};
 pub use reflect::Reflector;

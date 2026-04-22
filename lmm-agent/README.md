@@ -17,23 +17,67 @@
 - **`AutoAgent` orchestrator**: manages a heterogeneous pool of agents, running them concurrently with a configurable retry policy.
 - **`agents![]` macro**: ergonomic syntax to declare a typed `Vec<Box<dyn Executor>>`.
 - **`ThinkLoop`**: closed-loop PI controller that drives iterative reasoning toward a goal using Jaccard-error feedback.
-- **DuckDuckGo search** (optional): built-in web search via the `duckduckgo` crate (`--features net`). When real snippets are available, they are returned directly as factual output.
+- **Knowledge Acquisition**: ingest `.txt`, `.md`, `.pdf` (optional) or URLs into a queryable `KnowledgeIndex`; answer questions with `TextSummarizer` extractive summarisation, zero external AI.
+- **DuckDuckGo search** (optional, `--features net`): built-in web search. When real snippets are available, they are returned directly as factual output.
 - **Symbolic generation**: `AsyncFunctions::generate` uses `TextPredictor`, a symbolic regression engine that fits tone and rhythm trajectories to produce text. No neural model, no weights.
+
+
+## 👷🏻‍♀️ Agent Architecture
+
+```mermaid
+flowchart TD
+    User(["User / Caller"]) -->|"question / prompt"| EXEC
+
+    subgraph Agent["LmmAgent"]
+        direction TB
+        EXEC["Executor::execute()"]
+
+        EXEC --> GEN["generate(request)"]
+
+        GEN --> KI_CHECK{"KnowledgeIndex\nnon-empty?"}
+        KI_CHECK -- yes --> KI_ANSWER["KnowledgeIndex::answer()\n(IDF retrieval + TextSummarizer)"]
+        KI_CHECK -- no --> NET_CHECK{"net feature?"}
+
+        NET_CHECK -- yes --> DDG["DuckDuckGo search\nbest_sentence()"]
+        NET_CHECK -- no --> SYM["TextPredictor\n(symbolic regression)"]
+
+        DDG --> RESULT["Response text"]
+        KI_ANSWER --> RESULT
+        SYM --> RESULT
+
+        EXEC --> THINK["think_with()\nThinkLoop PI controller"]
+        THINK --> ORACLE["SearchOracle\n(DDG cache)"]
+        ORACLE --> THINK
+
+        EXEC --> MEM["Hot Memory\n(Vec&lt;Message&gt;)"]
+        EXEC --> LTM["Long-Term Memory"]
+        EXEC --> KB["Knowledge facts\n(key→value)"]
+        EXEC --> PLAN["Planner\n(Goal priority queue)"]
+        EXEC --> REFLECT["Reflection\n(eval_fn)"]
+    end
+
+    subgraph Ingestion["Knowledge Acquisition"]
+        SRC_FILE["File (.txt / .md / .pdf)"] --> PARSE
+        SRC_DIR["Directory"] --> PARSE
+        SRC_URL["URL (net feature)"] --> PARSE
+        SRC_RAW["RawText"] --> PARSE
+        PARSE["DocumentParser\n(PlainText / Markdown / PDF)"] --> CHUNKS["DocumentChunk[]"]
+        CHUNKS --> INDEX["KnowledgeIndex\n(IDF inverted index)"]
+    end
+
+    INDEX -->|"agent.ingest()"| KI_CHECK
+    RESULT -->|"agent.memory"| MEM
+    RESULT --> User
+```
 
 ## 📦 Installation
 
-Add this to your `Cargo.toml`:
-
 ```toml
 [dependencies]
-lmm-agent = "0.0.2"
-```
+lmm-agent = "0.0.3"
 
-Or enable it as a feature from the root `lmm` workspace:
-
-```toml
-[dependencies]
-lmm = { version = "0.2.3", features = ["agent"] }
+# Optional features:
+# lmm-agent = { version = "0.0.3", features = ["net", "knowledge"] }
 ```
 
 ## 🚀 Quick Start
@@ -91,31 +135,49 @@ async fn main() {
 }
 ```
 
+### 3. Ingest knowledge and ask questions
+
+```rust
+#[tokio::main]
+async fn main() {
+    let mut agent = LmmAgent::new("QA Agent".into(), "Rust.".into());
+
+    // Ingest from a local file, directory, URL, or inline text
+    let n = agent.ingest(KnowledgeSource::File("docs/rust.txt".into())).await?;
+    println!("Indexed {n} chunks");
+
+    // Answer directly from the knowledge base
+    let answer = agent.answer_from_knowledge("How does the borrow checker work?");
+    println!("{}", answer.unwrap_or_default());
+
+    // Or use generate(): it consults the index automatically before falling back to symbolic generation
+    let response = agent.generate("What is ownership in Rust?").await?;
+    println!("{response}");
+}
+```
+
 ## 🧠 Core Concepts
 
-| Concept     | Description                                                                |
-| ----------- | -------------------------------------------------------------------------- |
-| `persona`   | The agent's identity / role label (e.g. `"Research Agent"`)                |
-| `behavior`  | The agent's mission or goal description                                    |
-| `LmmAgent`  | Core struct holding all state (memory, tools, planner, knowledge, profile) |
-| `Message`   | A single chat-style message (`role` + `content`)                           |
-| `Status`    | `Idle` → `Active` → `Completed` (or `InUnitTesting`, `Thinking`)          |
-| `Auto`      | Derive macro that auto-implements `Agent`, `Functions`, `AsyncFunctions`   |
-| `Executor`  | The only trait you must implement, contains your custom task logic         |
-| `AutoAgent` | The orchestrator that runs a pool of `Executor`s                           |
-| `ThinkLoop` | PI-controller feedback loop that drives iterative multi-step reasoning     |
+| Concept           | Description                                                                |
+| ----------------- | -------------------------------------------------------------------------- |
+| `persona`         | The agent's identity / role label (e.g. `"Research Agent"`)                |
+| `behavior`        | The agent's mission or goal description                                    |
+| `LmmAgent`        | Core struct holding all state (memory, tools, planner, knowledge, profile) |
+| `Message`         | A single chat-style message (`role` + `content`)                           |
+| `Status`          | `Idle` → `Active` → `Completed` (or `InUnitTesting`, `Thinking`)          |
+| `Auto`            | Derive macro that auto-implements `Agent`, `Functions`, `AsyncFunctions`   |
+| `Executor`        | The only trait you must implement, contains your custom task logic         |
+| `AutoAgent`       | The orchestrator that runs a pool of `Executor`s                           |
+| `ThinkLoop`       | PI-controller feedback loop that drives iterative multi-step reasoning     |
+| `KnowledgeIndex`  | Inverted, IDF-weighted index over ingested document chunks                 |
+| `KnowledgeSource` | Enum of ingestion origins: `File`, `Dir`, `Url`, `RawText`                 |
 
 ## 🔧 LmmAgent Builder API
 
 ```rust
-use lmm_agent::agent::LmmAgent;
-use lmm_agent::types::{Status, Message, Planner, Goal};
-
 let agent = LmmAgent::builder()
     .persona("Research Agent")
     .behavior("Explore symbolic AI.")
-    .status(Status::Idle)
-    .memory(vec![Message::new("system", "You are a symbolic reasoner.")])
     .planner(Planner {
         current_plan: vec![Goal {
             description: "Survey equation-based agents.".into(),
@@ -123,30 +185,44 @@ let agent = LmmAgent::builder()
             completed: false,
         }],
     })
+    .knowledge_index(KnowledgeIndex::new())
     .build();
 ```
 
-## 📡 AsyncFunctions Trait
+## 📚 Knowledge Acquisition
 
-The `Auto` macro generates a full `AsyncFunctions` implementation for your struct:
+| Feature flag      | What it enables              |
+| ----------------- | ---------------------------- |
+| *(none)*          | `.txt` and `.md` ingestion   |
+| `knowledge`       | `.pdf` ingestion via `lopdf` |
+| `net`             | URL ingestion via `reqwest`  |
+
+### Key methods
+
+| Method                              | Description                                                |
+| ----------------------------------- | ---------------------------------------------------------- |
+| `agent.ingest(source)`              | Parse and index a `KnowledgeSource`; returns chunk count   |
+| `agent.query_knowledge(q, top_k)`  | Return top-k raw passage strings                           |
+| `agent.answer_from_knowledge(q)`   | Retrieve + summarise; returns `Option<String>`             |
+| `agent.generate(prompt)`           | Consults index first, then DDG/symbolic fallback           |
+
+## 📡 AsyncFunctions Trait
 
 | Method             | Description                                                                                |
 | ------------------ | ------------------------------------------------------------------------------------------ |
-| `generate(prompt)` | Symbolic text generation via `TextPredictor` (tone + rhythm regression). No LLM.          |
-| `search(query)`    | DuckDuckGo web search (`--features net`). Returns real sentences when available.           |
+| `generate(prompt)` | Knowledge-grounded → DDG factual → symbolic (`TextPredictor`) in that priority order      |
+| `search(query)`    | DuckDuckGo web search (`--features net`). Returns real sentences when available            |
 | `save_ltm(msg)`    | Persist a message to the agent's long-term memory store                                    |
 | `get_ltm()`        | Retrieve all LTM messages as a `Vec<Message>`                                              |
 | `ltm_context()`    | Format LTM as a single context string                                                      |
 
 ## 🔬 How Generation Works
 
-`AsyncFunctions::generate` dispatches to `LmmAgent::generate`, which uses the `TextPredictor` engine:
+`AsyncFunctions::generate` follows this priority chain:
 
-1. **Seed enrichment**: the prompt is enriched with domain-specific words extracted from the agent's own `behavior` field, so generation is topically grounded.
-1. **Tone trajectory**: symbolic regression fits a mathematical expression mapping `token_position → mean_byte_value` over the input window.
-1. **Rhythm trajectory**: a second regression fits `token_position → word_length`.
-1. **Token selection**: for each new token, the expected POS is determined from a grammar transition table; the word scoring lowest on a `tone_diff + length_diff + recency_penalty` score is chosen from curated vocabulary pools.
-1. **Net mode** (`--features net`): if DuckDuckGo returns snippets, the sentence with the highest token overlap against the request is returned **directly**, producing factual, real-world text instead of symbolic continuation.
+1. **Knowledge index** (highest priority): if the agent has ingested documents, the top-5 chunks are retrieved and fed to `TextSummarizer::summarize_with_query`. If a relevant answer is found, it is returned immediately.
+1. **Net mode** (`--features net`): if DuckDuckGo returns snippets, the sentence with the highest token overlap is returned directly, producing factual, real-world text.
+1. **Symbolic fallback**: the seed is enriched with domain words from `self.behavior` then fed to `TextPredictor` (tone + rhythm regression). No API call, no model weights.
 
 ## 📄 License
 

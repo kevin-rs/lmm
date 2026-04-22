@@ -25,12 +25,16 @@ uuid = { workspace = true }
 rand = { workspace = true }
 lmm-derive = { workspace = true }
 lmm = { workspace = true }
+phf = { workspace = true }
 
 duckduckgo = { workspace = true, optional = true }
+lopdf = { workspace = true, optional = true }
+reqwest = { workspace = true, optional = true }
 
 [dev-dependencies]
 tokio = { workspace = true }
 
 [features]
 default = []
-net = ["duckduckgo"]
+net = ["duckduckgo", "reqwest"]
+knowledge = ["lopdf"]
