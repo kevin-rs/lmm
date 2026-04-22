@@ -19,18 +19,18 @@ pub use crate::traits::agent::Agent;
 pub use crate::traits::composite::AgentFunctions;
 pub use crate::traits::functions::{AsyncFunctions, Executor, Functions};
 pub use crate::types::{
-    Capability, ContextManager, Goal, Knowledge, Message, Planner, Profile, Reflection, Route,
-    ScheduledTask, Scope, Status, Task, TaskScheduler, ThinkResult, Tool, ToolName,
-    default_eval_fn,
+    AgentSnapshot, Capability, ContextManager, ExperienceRecord, Goal, Knowledge, LearningMode,
+    Message, Planner, Profile, Reflection, Route, ScheduledTask, Scope, Status, Task,
+    TaskScheduler, ThinkResult, Tool, ToolName, default_eval_fn,
 };
 
 pub use crate::cognition::{
-    CognitionSignal, ColdStore, DocumentChunk, GoalEvaluator, HotStore, KnowledgeIndex,
-    KnowledgeSource, MemoryEntry, Reflector, SearchOracle, ThinkLoop, ThinkLoopBuilder,
-    error_from_texts,
+    ActionKey, CognitionSignal, ColdStore, DocumentChunk, ElasticMemoryGuard, FederatedAggregator,
+    GoalEvaluator, HotStore, InformalLearner, KnowledgeDistiller, KnowledgeIndex, KnowledgeSource,
+    LearningConfig, LearningEngine, MemoryEntry, MetaAdapter, QTable, Reflector, SearchOracle,
+    ThinkLoop, ThinkLoopBuilder, error_from_texts,
 };
 
-// External re-exports used in macro-generated code and user impls.
 pub use anyhow::{Result, anyhow};
 pub use async_trait::async_trait;
 pub use lmm_derive::Auto;
@@ -40,5 +40,4 @@ pub use std::sync::Arc;
 pub use tokio::sync::Mutex;
 pub use uuid::Uuid;
 
-// Re-export the agents! macro so users only need `use lmm_agent::prelude::*`.
 pub use crate::agents;

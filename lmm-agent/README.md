@@ -17,6 +17,7 @@
 - **`AutoAgent` orchestrator**: manages a heterogeneous pool of agents, running them concurrently with a configurable retry policy.
 - **`agents![]` macro**: ergonomic syntax to declare a typed `Vec<Box<dyn Executor>>`.
 - **`ThinkLoop`**: closed-loop PI controller that drives iterative reasoning toward a goal using Jaccard-error feedback.
+- **`HELM`** _(Hybrid Equation-based Lifelong Memory)_: Equation-driven in-environment learning engine. 6 fused paradigms: tabular Q-learning, prototype meta-adaptation, knowledge distillation, self-federated aggregation, elastic memory guard, and PMI co-occurrence mining. All running on hash maps and f64 arithmetic. No GPU, no neural networks, no external ML crates.
 - **Knowledge Acquisition**: ingest `.txt`, `.md`, `.pdf` (optional) or URLs into a queryable `KnowledgeIndex`; answer questions with `TextSummarizer` extractive summarisation, zero external AI.
 - **DuckDuckGo search** (optional, `--features net`): built-in web search. When real snippets are available, they are returned directly as factual output.
 - **Symbolic generation**: `AsyncFunctions::generate` uses `TextPredictor`, a symbolic regression engine that fits tone and rhythm trajectories to produce text. No neural model, no weights.
@@ -49,11 +50,23 @@ flowchart TD
         THINK --> ORACLE["SearchOracle\n(DDG cache)"]
         ORACLE --> THINK
 
+        THINK -->|"CognitionSignal\nper step"| HELM_STEP["HELM: record_step()\n· Q-table Bellman update\n· PMI pair mining\n· Elastic activation count"]
+        THINK -->|"end of episode"| HELM_EP["HELM: end_of_episode()\n· Knowledge distillation\n· Meta-prototype store\n· ε decay"]
+
         EXEC --> MEM["Hot Memory\n(Vec&lt;Message&gt;)"]
         EXEC --> LTM["Long-Term Memory"]
         EXEC --> KB["Knowledge facts\n(key→value)"]
         EXEC --> PLAN["Planner\n(Goal priority queue)"]
         EXEC --> REFLECT["Reflection\n(eval_fn)"]
+
+        HELM_STEP --> QTABLE["Q-Table\nHashMap&lt;u64, HashMap&lt;ActionKey, f64&gt;&gt;"]
+        HELM_EP --> QTABLE
+        HELM_EP --> KI_ANSWER
+
+        QTABLE -->|"recall_learned()"| RECALL["Recommended ActionKey\n(exploit / explore)"]
+        QTABLE -->|"export_snapshot()"| FED["Federated Exchange\nweighted Q-table merge"]
+        QTABLE -->|"save_learning()"| PERSIST["JSON Persistence\n/path/to/helm.json"]
+        PERSIST -->|"load_learning()"| QTABLE
     end
 
     subgraph Ingestion["Knowledge Acquisition"]
@@ -68,6 +81,7 @@ flowchart TD
     INDEX -->|"agent.ingest()"| KI_CHECK
     RESULT -->|"agent.memory"| MEM
     RESULT --> User
+    FED -->|"agent_b.federate(snap)"| QTABLE
 ```
 
 ## 📦 Installation
@@ -223,6 +237,80 @@ let agent = LmmAgent::builder()
 1. **Knowledge index** (highest priority): if the agent has ingested documents, the top-5 chunks are retrieved and fed to `TextSummarizer::summarize_with_query`. If a relevant answer is found, it is returned immediately.
 1. **Net mode** (`--features net`): if DuckDuckGo returns snippets, the sentence with the highest token overlap is returned directly, producing factual, real-world text.
 1. **Symbolic fallback**: the seed is enriched with domain words from `self.behavior` then fed to `TextPredictor` (tone + rhythm regression). No API call, no model weights.
+
+## 🧬 HELM: Lifelong Learning
+
+HELM is the in-environment learning engine built directly into `LmmAgent`. It operates entirely on the CPU, no GPU, no neural networks, no external ML crates.
+
+### Architecture
+
+| Sub-module | Paradigm | Mechanism |
+|---|---|---|
+| `q_table` | Tabular Bellman TD(0) | `HashMap<u64, HashMap<ActionKey, f64>>` |
+| `meta` | Prototype meta-adaptation | Jaccard similarity on token sets |
+| `distill` | Knowledge distillation | top-K ColdStore → KnowledgeIndex by reward×IDF |
+| `federated` | Self-federated aggregation | Weighted Q-table merging without a central server |
+| `elastic` | Elastic memory guard | Activation-count pinning (Fisher-analog importance) |
+| `informal` | Invisible PMI learning | Co-occurrence mining from high-reward observations |
+
+### Quick Start with HELM
+
+```rust
+use lmm_agent::prelude::*;
+use lmm_agent::cognition::learning::{LearningConfig, LearningEngine};
+
+let mut agent = LmmAgent::builder()
+    .persona("Lifelong Learner")
+    .behavior("Understand Rust memory model.")
+    .learning_engine(LearningEngine::new(LearningConfig::default()))
+    .build();
+
+agent.think("Rust ownership and borrowing").await?;
+
+let action = agent.recall_learned("rust ownership borrow lifetime", 0);
+println!("Recommended action: {action:?}");
+
+agent.save_learning(std::path::Path::new("./agent_helm.json"))?;
+```
+
+### Persistence
+
+```rust
+agent.load_learning(std::path::Path::new("./agent_helm.json"))?;
+```
+
+### Federated Exchange
+
+```rust
+let snapshot = agent_a.learning_engine.as_ref().unwrap()
+    .export_snapshot("agent-a");
+
+agent_b.learning_engine.as_mut().unwrap().federate(&snapshot);
+```
+
+### Configuration
+
+```rust
+let cfg = LearningConfig::builder()
+    .alpha(0.15)            // TD learning rate
+    .gamma(0.92)            // Discount factor
+    .epsilon(0.25)          // Initial exploration probability
+    .distill_top_k(10)      // Cold entries promoted per episode
+    .distill_threshold(0.2) // Minimum reward for distillation
+    .federated_blend(0.5)   // Local weight in federated merge
+    .elastic_pin_count(3)   // Activations before entry is pinned
+    .build();
+```
+
+### Examples
+
+```bash
+cargo run --example learning_agent -p lmm-agent
+
+cargo run --example federated_learning -p lmm-agent
+
+cargo run --example full_lifecycle -p lmm-agent
+```
 
 ## 📄 License
 

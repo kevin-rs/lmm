@@ -191,7 +191,6 @@ async fn main() {
                     .collect(),
             )
             .build(),
-        ..Default::default()
     };
 
     match AutoAgent::default()

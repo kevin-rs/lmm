@@ -51,6 +51,7 @@
 
 pub mod goal;
 pub mod knowledge;
+pub mod learning;
 pub mod r#loop;
 pub mod memory;
 pub mod reflect;
@@ -59,6 +60,10 @@ pub mod signal;
 
 pub use goal::GoalEvaluator;
 pub use knowledge::{DocumentChunk, KnowledgeIndex, KnowledgeSource};
+pub use learning::{
+    ActionKey, ElasticMemoryGuard, FederatedAggregator, InformalLearner, KnowledgeDistiller,
+    LearningConfig, LearningEngine, MetaAdapter, QTable,
+};
 pub use r#loop::{ThinkLoop, ThinkLoopBuilder};
 pub use memory::{ColdStore, HotStore, MemoryEntry};
 pub use reflect::Reflector;
