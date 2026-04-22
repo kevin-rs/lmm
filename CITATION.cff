@@ -4,7 +4,7 @@ title: LMM
 abstract: Large Mathematical Model: a revolutionary training-free framework for text generation that replaces gradient descent and neural networks with pure mathematics and stochastic determinism.
 authors:
   - name: "Mahmoud Harmouch"
-version: v0.2.3
+version: v0.2.4
 date-released: "2026-04-20"
 license: MIT
 repository-code: "https://github.com/wiseaidotdev/lmm"
