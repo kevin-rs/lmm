@@ -10,6 +10,10 @@ repository = "https://github.com/wiseaidotdev/lmm"
 homepage = "https://wiseai.dev"
 keywords = ["lmm", "agent", "ai", "autonomous", "duckduckgo"]
 categories = ["science"]
+exclude = [
+    "examples",
+    "tests",
+]
 
 [dependencies]
 anyhow = { workspace = true }

@@ -25,10 +25,11 @@ pub use crate::types::{
 };
 
 pub use crate::cognition::{
-    ActionKey, CognitionSignal, ColdStore, DocumentChunk, ElasticMemoryGuard, FederatedAggregator,
-    GoalEvaluator, HotStore, InformalLearner, KnowledgeDistiller, KnowledgeIndex, KnowledgeSource,
-    LearningConfig, LearningEngine, MemoryEntry, MetaAdapter, QTable, Reflector, SearchOracle,
-    ThinkLoop, ThinkLoopBuilder, error_from_texts,
+    ActionKey, AttributionReport, CausalAttributor, CognitionSignal, ColdStore, DocumentChunk,
+    DriveSignal, DriveState, ElasticMemoryGuard, FederatedAggregator, GoalEvaluator, HotStore,
+    Hypothesis, HypothesisGenerator, InformalLearner, InternalDrive, KnowledgeDistiller,
+    KnowledgeIndex, KnowledgeSource, LearningConfig, LearningEngine, MemoryEntry, MetaAdapter,
+    QTable, Reflector, SearchOracle, ThinkLoop, ThinkLoopBuilder, error_from_texts,
 };
 
 pub use anyhow::{Result, anyhow};

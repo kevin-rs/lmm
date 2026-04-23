@@ -21,13 +21,12 @@
 //! use lmm_agent::cognition::learning::store::LearningStore;
 //! use lmm_agent::cognition::learning::engine::LearningEngine;
 //! use lmm_agent::cognition::learning::config::LearningConfig;
-//! use std::path::Path;
 //!
 //! let engine = LearningEngine::new(LearningConfig::default());
-//! let path = Path::new("/tmp/test_helm_store.json");
+//! let path = std::env::temp_dir().join(format!("test_helm_store_{}.json", uuid::Uuid::new_v4()));
 //!
-//! LearningStore::save(&engine, path).unwrap();
-//! let loaded = LearningStore::load(path).unwrap();
+//! LearningStore::save(&engine, &path).unwrap();
+//! let loaded = LearningStore::load(&path).unwrap();
 //! assert_eq!(loaded.q_table().state_count(), engine.q_table().state_count());
 //! ```
 
@@ -54,11 +53,10 @@ impl LearningStore {
     /// use lmm_agent::cognition::learning::store::LearningStore;
     /// use lmm_agent::cognition::learning::engine::LearningEngine;
     /// use lmm_agent::cognition::learning::config::LearningConfig;
-    /// use std::path::Path;
     ///
     /// let engine = LearningEngine::new(LearningConfig::default());
-    /// let path = Path::new("/tmp/helm_doctest.json");
-    /// LearningStore::save(&engine, path).unwrap();
+    /// let path = std::env::temp_dir().join(format!("helm_doctest_{}.json", uuid::Uuid::new_v4()));
+    /// LearningStore::save(&engine, &path).unwrap();
     /// ```
     pub fn save(engine: &LearningEngine, path: &Path) -> Result<()> {
         if let Some(parent) = path.parent()
@@ -84,12 +82,11 @@ impl LearningStore {
     /// use lmm_agent::cognition::learning::store::LearningStore;
     /// use lmm_agent::cognition::learning::engine::LearningEngine;
     /// use lmm_agent::cognition::learning::config::LearningConfig;
-    /// use std::path::Path;
     ///
     /// let engine = LearningEngine::new(LearningConfig::default());
-    /// let path = Path::new("/tmp/helm_load_doctest.json");
-    /// LearningStore::save(&engine, path).unwrap();
-    /// let loaded = LearningStore::load(path).unwrap();
+    /// let path = std::env::temp_dir().join(format!("helm_load_doctest_{}.json", uuid::Uuid::new_v4()));
+    /// LearningStore::save(&engine, &path).unwrap();
+    /// let loaded = LearningStore::load(&path).unwrap();
     /// assert_eq!(loaded.config().alpha, engine.config().alpha);
     /// ```
     pub fn load(path: &Path) -> Result<LearningEngine> {
