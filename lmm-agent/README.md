@@ -21,6 +21,7 @@
 - **Knowledge Acquisition**: ingest `.txt`, `.md`, `.pdf` (optional) or URLs into a queryable `KnowledgeIndex`; answer questions with `TextSummarizer` extractive summarisation, zero external AI.
 - **DuckDuckGo search** (optional, `--features net`): built-in web search. When real snippets are available, they are returned directly as factual output.
 - **Symbolic generation**: `AsyncFunctions::generate` uses `TextPredictor`, a symbolic regression engine that fits tone and rhythm trajectories to produce text. No neural model, no weights.
+- **Intelligence Primitives**: five structural properties that go beyond pattern interpolation, see [Intelligence Primitives](#-intelligence-primitives).
 
 
 ## 👷🏻‍♀️ Agent Architecture
@@ -67,6 +68,12 @@ flowchart TD
         QTABLE -->|"export_snapshot()"| FED["Federated Exchange\nweighted Q-table merge"]
         QTABLE -->|"save_learning()"| PERSIST["JSON Persistence\n/path/to/helm.json"]
         PERSIST -->|"load_learning()"| QTABLE
+
+        EXEC --> ATTR["attribute_causes()\nCausalAttributor\n(do-calculus counterfactuals)"]
+        EXEC --> HYP["form_hypotheses()\nHypothesisGenerator\n(residual → candidate edges)"]
+        EXEC --> DRIVE_TICK["drive_state()\nInternalDrive::tick()"]
+        DRIVE_TICK --> DRIVE_OUT["DriveState\n(Curiosity | CoherenceSeeking\n| ContradictionResolution)"]
+        DRIVE_OUT -->|"modulates goal priority"| THINK
     end
 
     subgraph Ingestion["Knowledge Acquisition"]
@@ -78,10 +85,20 @@ flowchart TD
         CHUNKS --> INDEX["KnowledgeIndex\n(IDF inverted index)"]
     end
 
+    subgraph LmmCore["lmm core"]
+        CAUSAL["CausalGraph\n(DAG forward-pass)"]
+        UNC["UncertaintyPropagator\n(Gaussian belief propagation)"]
+        REASON["DeductionEngine\n(forward-chaining axioms)"]
+    end
+
     INDEX -->|"agent.ingest()"| KI_CHECK
     RESULT -->|"agent.memory"| MEM
     RESULT --> User
     FED -->|"agent_b.federate(snap)"| QTABLE
+    ATTR --> CAUSAL
+    HYP --> CAUSAL
+    UNC --> CAUSAL
+    THINK --> REASON
 ```
 
 ## 📦 Installation
@@ -172,19 +189,22 @@ async fn main() {
 
 ## 🧠 Core Concepts
 
-| Concept           | Description                                                                |
-| ----------------- | -------------------------------------------------------------------------- |
-| `persona`         | The agent's identity / role label (e.g. `"Research Agent"`)                |
-| `behavior`        | The agent's mission or goal description                                    |
-| `LmmAgent`        | Core struct holding all state (memory, tools, planner, knowledge, profile) |
-| `Message`         | A single chat-style message (`role` + `content`)                           |
-| `Status`          | `Idle` → `Active` → `Completed` (or `InUnitTesting`, `Thinking`)          |
-| `Auto`            | Derive macro that auto-implements `Agent`, `Functions`, `AsyncFunctions`   |
-| `Executor`        | The only trait you must implement, contains your custom task logic         |
-| `AutoAgent`       | The orchestrator that runs a pool of `Executor`s                           |
-| `ThinkLoop`       | PI-controller feedback loop that drives iterative multi-step reasoning     |
-| `KnowledgeIndex`  | Inverted, IDF-weighted index over ingested document chunks                 |
-| `KnowledgeSource` | Enum of ingestion origins: `File`, `Dir`, `Url`, `RawText`                 |
+| Concept              | Description                                                                |
+| -------------------- | -------------------------------------------------------------------------- |
+| `persona`            | The agent's identity / role label (e.g. `"Research Agent"`)               |
+| `behavior`           | The agent's mission or goal description                                    |
+| `LmmAgent`           | Core struct holding all state (memory, tools, planner, knowledge, profile) |
+| `Message`            | A single chat-style message (`role` + `content`)                           |
+| `Status`             | `Idle` → `Active` → `Completed` (or `InUnitTesting`, `Thinking`)          |
+| `Auto`               | Derive macro that auto-implements `Agent`, `Functions`, `AsyncFunctions`   |
+| `Executor`           | The only trait you must implement, contains your custom task logic         |
+| `AutoAgent`          | The orchestrator that runs a pool of `Executor`s                           |
+| `ThinkLoop`          | PI-controller feedback loop that drives iterative multi-step reasoning     |
+| `KnowledgeIndex`     | Inverted, IDF-weighted index over ingested document chunks                 |
+| `KnowledgeSource`    | Enum of ingestion origins: `File`, `Dir`, `Url`, `RawText`                 |
+| `CausalAttributor`   | Counterfactual attribution via Pearl do-calculus                           |
+| `HypothesisGenerator`| Ranks candidate new causal edges by explanatory power                     |
+| `InternalDrive`      | Emits `DriveSignal` (Curiosity / CoherenceSeeking / ContradictionResolution) each tick |
 
 ## 🔧 LmmAgent Builder API
 
@@ -302,13 +322,62 @@ let cfg = LearningConfig::builder()
     .build();
 ```
 
+## 🔬 Intelligence Primitives
+
+These five structural properties replace statistical pattern matching with auditable, causal, and motivated cognition.
+
+| # | Primitive | Key Type | Description |
+|---|-----------|----------|-------------|
+| 1 | Calibrated Bayesian Uncertainty | `lmm::uncertainty::BeliefDistribution` | Gaussian beliefs with Bayesian fusion and Brier-score calibration |
+| 2 | Compositional Axiomatic Reasoning | `lmm::reasoner::DeductionEngine` | Forward-chaining axioms to auditable proofs |
+| 3 | Causal Counterfactual Attribution | `CausalAttributor` | do-calculus interventions to attribute outcomes to root causes |
+| 4 | Hypothesis Formation | `HypothesisGenerator` | Propose new causal edges that explain unexplained residuals |
+| 5 | Internalized Motivational Drives | `InternalDrive` | Intrinsic signals (Curiosity, CoherenceSeeking, ContradictionResolution) |
+
+### Quick examples
+
+```rust
+use lmm::causal::CausalGraph;
+use lmm_agent::prelude::*;
+use std::collections::HashMap;
+
+let mut agent = LmmAgent::new("Analyst".into(), "Causal discovery.".into());
+
+let mut g = CausalGraph::new();
+g.add_node("co2", Some(420.0));
+g.add_node("temp", None);
+g.add_edge("co2", "temp", Some(0.01)).unwrap();
+g.forward_pass().unwrap();
+
+let report = agent.attribute_causes(&g, "temp").unwrap();
+println!("{} accounts for {:.1}% of temp change",
+    report.dominant_cause().unwrap(),
+    report.weight_for("co2").unwrap() * 100.0);
+
+let mut observed = HashMap::new();
+observed.insert("temp".to_string(), 4.5);
+let hypotheses = agent.form_hypotheses(&g, &observed, 5).unwrap();
+for h in &hypotheses {
+    println!("Hypothesis: {} → {} power={:.3}",
+        h.proposed_edge.from, h.proposed_edge.to, h.explanatory_power);
+}
+
+agent.record_residual(0.3);
+let state = agent.drive_state();
+if let Some(drive) = state.dominant_drive() {
+    println!("Agent is driven by: {} (urgency {:.1}%)",
+        drive.name(), drive.magnitude() * 100.0);
+}
+```
+
 ### Examples
 
 ```bash
+cargo run --example intelligence_primitives -p lmm-agent
+cargo run --example causal_reasoning -p lmm-agent
+cargo run --example internalized_motivation -p lmm-agent
 cargo run --example learning_agent -p lmm-agent
-
 cargo run --example federated_learning -p lmm-agent
-
 cargo run --example full_lifecycle -p lmm-agent
 ```
 

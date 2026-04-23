@@ -99,8 +99,6 @@ impl Executor for TestAgent {
 #[test]
 fn auto_derive_creates_agent_correctly() {
     let agent = TestAgent {
-        persona: "Tester".into(),
-        behavior: "Test persona.".into(),
         agent: LmmAgent::new("Tester".into(), "Test persona.".into()),
         ..Default::default()
     };

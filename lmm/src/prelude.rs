@@ -34,10 +34,12 @@ pub use crate::operator::*;
 pub use crate::perception::*;
 pub use crate::physics::*;
 pub use crate::predict::*;
+pub use crate::reasoner::*;
 pub use crate::simulation::*;
 pub use crate::symbolic::*;
 pub use crate::tensor::*;
 pub use crate::traits::*;
+pub use crate::uncertainty::*;
 pub use crate::world::*;
 
 // Copyright 2026 Mahmoud Harmouch.

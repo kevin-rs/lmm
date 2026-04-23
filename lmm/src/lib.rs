@@ -32,12 +32,14 @@ pub mod perception;
 pub mod physics;
 pub mod predict;
 pub mod prelude;
+pub mod reasoner;
 pub mod simulation;
 pub mod stochastic;
 pub mod symbolic;
 pub mod tensor;
 pub mod text;
 pub mod traits;
+pub mod uncertainty;
 pub mod world;
 
 pub mod app;

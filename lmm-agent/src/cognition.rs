@@ -13,14 +13,17 @@
 //!
 //! ## Sub-modules
 //!
-//! | Module    | Key Type                    | Role                                            |
-//! |-----------|-----------------------------|-------------------------------------------------|
-//! | `signal`  | [`signal::CognitionSignal`] | Per-iteration error, gain, and reward scalar    |
-//! | `memory`  | [`memory::HotStore`] etc.   | Two-tier bounded/unbounded memory               |
-//! | `goal`    | [`goal::GoalEvaluator`]     | Convergence comparator (Jaccard distance)       |
-//! | `reflect` | [`reflect::Reflector`]      | Query formulation + memory consolidation        |
-//! | `search`  | [`search::SearchOracle`]    | DuckDuckGo plant with in-process cache          |
-//! | `loop`    | [`r#loop::ThinkLoop`]       | The controller that stitches everything together|
+//! | Module          | Key Type                        | Role                                               |
+//! |-----------------|---------------------------------|----------------------------------------------------|
+//! | `signal`        | [`signal::CognitionSignal`]     | Per-iteration error, gain, and reward scalar       |
+//! | `memory`        | [`memory::HotStore`] etc.       | Two-tier bounded/unbounded memory                  |
+//! | `goal`          | [`goal::GoalEvaluator`]         | Convergence comparator (Jaccard distance)          |
+//! | `reflect`       | [`reflect::Reflector`]          | Query formulation + memory consolidation           |
+//! | `search`        | [`search::SearchOracle`]        | DuckDuckGo plant with in-process cache             |
+//! | `loop`          | [`r#loop::ThinkLoop`]           | The controller that stitches everything together   |
+//! | `attribution`   | [`attribution::CausalAttributor`]| Counterfactual causal attribution                 |
+//! | `hypothesis`    | [`hypothesis::HypothesisGenerator`]| Novel causal hypothesis formation               |
+//! | `drive`         | [`drive::InternalDrive`]        | Internalized motivation and curiosity signals      |
 //!
 //! ## Quick example
 //!
@@ -49,7 +52,10 @@
 //! * [Autonomous agent - Wikipedia](https://en.wikipedia.org/wiki/Autonomous_agent)
 //! * [Control theory - Wikipedia](https://en.wikipedia.org/wiki/Control_theory)
 
+pub mod attribution;
+pub mod drive;
 pub mod goal;
+pub mod hypothesis;
 pub mod knowledge;
 pub mod learning;
 pub mod r#loop;
@@ -58,7 +64,10 @@ pub mod reflect;
 pub mod search;
 pub mod signal;
 
+pub use attribution::{AttributionReport, CausalAttributor};
+pub use drive::{DriveSignal, DriveState, InternalDrive};
 pub use goal::GoalEvaluator;
+pub use hypothesis::{Hypothesis, HypothesisGenerator};
 pub use knowledge::{DocumentChunk, KnowledgeIndex, KnowledgeSource};
 pub use learning::{
     ActionKey, ElasticMemoryGuard, FederatedAggregator, InformalLearner, KnowledgeDistiller,

@@ -31,6 +31,7 @@
 //! Adapted from the `autogpt` project's `agents/agent.rs`:
 //! <https://github.com/wiseaidotdev/autogpt/blob/main/autogpt/src/agents/agent.rs>
 
+use crate::cognition::drive::InternalDrive;
 use crate::cognition::knowledge::{KnowledgeIndex, KnowledgeSource, ingest as knowledge_ingest};
 use crate::cognition::learning::engine::LearningEngine;
 use crate::cognition::learning::q_table::{ActionKey, QTable};
@@ -127,6 +128,9 @@ pub struct LmmAgent {
 
     /// Optional HELM learning engine for in-environment lifelong learning.
     pub learning_engine: Option<LearningEngine>,
+
+    /// Internalized drive system for intrinsic motivation signals.
+    pub internal_drive: InternalDrive,
 }
 
 // LmmAgentBuilder
@@ -176,6 +180,7 @@ pub struct LmmAgentBuilder {
     tasks: Option<Vec<Task>>,
     knowledge_index: Option<KnowledgeIndex>,
     learning_engine: Option<Option<LearningEngine>>,
+    internal_drive: Option<InternalDrive>,
 }
 
 impl LmmAgentBuilder {
@@ -281,6 +286,12 @@ impl LmmAgentBuilder {
         self
     }
 
+    /// Overrides the default [`InternalDrive`] configuration.
+    pub fn internal_drive(mut self, drive: InternalDrive) -> Self {
+        self.internal_drive = Some(drive);
+        self
+    }
+
     /// Constructs the [`LmmAgent`].
     ///
     /// # Panics
@@ -321,6 +332,7 @@ impl LmmAgentBuilder {
             tasks: self.tasks.unwrap_or_default(),
             knowledge_index: self.knowledge_index.unwrap_or_default(),
             learning_engine: self.learning_engine.unwrap_or(None),
+            internal_drive: self.internal_drive.unwrap_or_default(),
         }
     }
 }
@@ -746,7 +758,8 @@ impl LmmAgent {
     ///     .learning_engine(LearningEngine::new(LearningConfig::default()))
     ///     .build();
     ///
-    /// agent.save_learning(std::path::Path::new("/tmp/agent_helm.json")).unwrap();
+    /// let path = std::env::temp_dir().join(format!("agent_helm_{}.json", uuid::Uuid::new_v4()));
+    /// agent.save_learning(&path).unwrap();
     /// ```
     pub fn save_learning(&self, path: &std::path::Path) -> Result<()> {
         if let Some(engine) = &self.learning_engine {
@@ -772,9 +785,9 @@ impl LmmAgent {
     ///     .learning_engine(LearningEngine::new(LearningConfig::default()))
     ///     .build();
     ///
-    /// let path = std::path::Path::new("/tmp/agent_helm_load.json");
-    /// agent.save_learning(path).unwrap();
-    /// agent.load_learning(path).unwrap();
+    /// let path = std::env::temp_dir().join(format!("agent_helm_load_{}.json", uuid::Uuid::new_v4()));
+    /// agent.save_learning(&path).unwrap();
+    /// agent.load_learning(&path).unwrap();
     /// ```
     pub fn load_learning(&mut self, path: &std::path::Path) -> Result<()> {
         let engine = LearningStore::load(path)?;
@@ -806,6 +819,111 @@ impl LmmAgent {
         let engine = self.learning_engine.as_mut()?;
         let state = QTable::state_key(query);
         Some(engine.recommend_action(state, query, step))
+    }
+
+    /// Attributes the outcome of `outcome_var` in `graph` to its causal parents
+    /// by running Pearl *do*-calculus counterfactuals on each parent.
+    ///
+    /// Returns an [`AttributionReport`] with normalised weights sorted
+    /// highest-first, or `None` when `outcome_var` has no parents.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use lmm::causal::CausalGraph;
+    /// use lmm_agent::agent::LmmAgent;
+    ///
+    /// let mut g = CausalGraph::new();
+    /// g.add_node("cause", Some(2.0));
+    /// g.add_node("effect", None);
+    /// g.add_edge("cause", "effect", Some(1.0)).unwrap();
+    /// g.forward_pass().unwrap();
+    ///
+    /// let agent = LmmAgent::new("Analyst".into(), "Causal analysis.".into());
+    /// let report = agent.attribute_causes(&g, "effect").unwrap();
+    /// assert_eq!(report.weights[0].0, "cause");
+    /// ```
+    pub fn attribute_causes(
+        &self,
+        graph: &lmm::causal::CausalGraph,
+        outcome_var: &str,
+    ) -> anyhow::Result<crate::cognition::attribution::AttributionReport> {
+        crate::cognition::attribution::CausalAttributor::attribute(graph, outcome_var)
+            .map_err(|e| anyhow::anyhow!("{e}"))
+    }
+
+    /// Generates causal hypotheses for variables whose observed values are not
+    /// explained by the current `graph` structure.
+    ///
+    /// Returns up to `max_hypotheses` candidate new edges ranked by
+    /// explanatory power, highest first.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use lmm::causal::CausalGraph;
+    /// use lmm_agent::agent::LmmAgent;
+    /// use std::collections::HashMap;
+    ///
+    /// let mut g = CausalGraph::new();
+    /// g.add_node("x", Some(1.0));
+    /// g.add_node("y", Some(0.0));
+    ///
+    /// let mut observed = HashMap::new();
+    /// observed.insert("y".to_string(), 0.9);
+    ///
+    /// let agent = LmmAgent::new("Scientist".into(), "Discover causal laws.".into());
+    /// let hypotheses = agent.form_hypotheses(&g, &observed, 5).unwrap();
+    /// assert!(!hypotheses.is_empty());
+    /// ```
+    pub fn form_hypotheses(
+        &self,
+        graph: &lmm::causal::CausalGraph,
+        observed: &std::collections::HashMap<String, f64>,
+        max_hypotheses: usize,
+    ) -> anyhow::Result<Vec<crate::cognition::hypothesis::Hypothesis>> {
+        let r#gen = crate::cognition::hypothesis::HypothesisGenerator::new(0.05, max_hypotheses);
+        r#gen
+            .generate(graph, observed)
+            .map_err(|e| anyhow::anyhow!("{e}"))
+    }
+
+    /// Emits the current [`DriveState`] by ticking the agent's [`InternalDrive`].
+    ///
+    /// If no drive has been accumulated via [`LmmAgent::record_residual`] the
+    /// returned state will be idle.  The drive counters are reset after each
+    /// call, matching the semantics of [`InternalDrive::tick`].
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use lmm_agent::agent::LmmAgent;
+    ///
+    /// let mut agent = LmmAgent::new("Curious".into(), "Learn everything.".into());
+    /// agent.record_residual(0.9);
+    /// let state = agent.drive_state();
+    /// assert!(!state.signals.is_empty());
+    /// ```
+    pub fn drive_state(&mut self) -> crate::cognition::drive::DriveState {
+        self.internal_drive.tick()
+    }
+
+    /// Feeds an unexplained prediction residual into the agent's internal drive.
+    ///
+    /// Calling this after each world-model error accumulates curiosity that
+    /// surfaces on the next [`drive_state`](Self::drive_state) call.
+    pub fn record_residual(&mut self, magnitude: f64) {
+        self.internal_drive.record_residual(magnitude);
+    }
+
+    /// Feeds an incoherence signal into the agent's internal drive.
+    pub fn record_incoherence(&mut self, magnitude: f64) {
+        self.internal_drive.record_incoherence(magnitude);
+    }
+
+    /// Notifies the drive system that a contradiction was detected in memory.
+    pub fn record_contradiction(&mut self) {
+        self.internal_drive.record_contradiction();
     }
 }
 

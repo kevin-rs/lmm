@@ -47,3 +47,12 @@ jobs:
 
       - name: Run Federated Learning
         run: cargo run --example federated_learning
+
+      - name: Run Intelligence Primitives Agent
+        run: cargo run --example intelligence_primitives
+
+      - name: Run Causal Reasoning Agent
+        run: cargo run --example causal_reasoning
+
+      - name: Run Internalized Motivation Agent
+        run: cargo run --example internalized_motivation
