@@ -39,7 +39,7 @@ syn = { version = "2.0.117", features = ["full"] }
 quote = "1.0.45"
 proc-macro2 = "1.0.106"
 lmm-derive = { version = "0.0.2", path = "./lmm-derive" }
-lmm-agent = { version = "0.1.0", path = "./lmm-agent" }
+lmm-agent = { version = "0.1.1", path = "./lmm-agent" }
 lmm = { version = "0.2.5", path = "./lmm" }
 
 [profile.dev]
