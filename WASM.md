@@ -16,7 +16,7 @@ Add `lmm` to your `Cargo.toml` with the appropriate feature set. Avoid enabling 
 
 ```toml
 [dependencies]
-lmm = { version = "0.2.6", default-features = false, features = ["wasm-net"] }
+lmm = { version = "0.2.7", default-features = false, features = ["wasm-net"] }
 ```
 
 Build with Trunk (Yew / Leptos):
