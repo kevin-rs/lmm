@@ -88,7 +88,7 @@ async fn main() {
         println!("Step 1b: '{direct_cause}' is the direct cause. Tracing it to root causes...");
         let report_ghg = agent.attribute_causes(&graph, direct_cause).unwrap();
         if report_ghg.weights.is_empty() {
-            println!("  (no further parents — '{direct_cause}' is a root variable)");
+            println!("  (no further parents - '{direct_cause}' is a root variable)");
         } else {
             for (var, weight) in &report_ghg.weights {
                 println!("  {var:<25} {weight:.3} [{}]", print_bar(*weight));

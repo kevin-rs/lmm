@@ -3,7 +3,7 @@ resolver = "2"
 members = [
     "lmm",
     "lmm-derive",
-    "lmm-agent",
+    "lmm-agent"
 ]
 exclude = [
     "target",

@@ -295,6 +295,11 @@ impl QTable {
         self.epsilon = (self.epsilon * self.epsilon_decay).max(self.epsilon_min);
     }
 
+    /// Resets ε to a specific value, useful for phase transitions or new levels.
+    pub fn reset_epsilon(&mut self, new_epsilon: f64) {
+        self.epsilon = new_epsilon.clamp(0.0, 1.0);
+    }
+
     /// Returns an iterator over `(state, action, q_value)` triples.
     pub fn entries(&self) -> impl Iterator<Item = (u64, ActionKey, f64)> + '_ {
         self.table

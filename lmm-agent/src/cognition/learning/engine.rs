@@ -137,6 +137,11 @@ impl LearningEngine {
         &self.q_table
     }
 
+    /// Resets the Q-table exploration epsilon.
+    pub fn reset_epsilon(&mut self, epsilon: f64) {
+        self.q_table.reset_epsilon(epsilon);
+    }
+
     /// Returns the total number of completed episodes.
     pub fn episode_count(&self) -> usize {
         self.episode_count
