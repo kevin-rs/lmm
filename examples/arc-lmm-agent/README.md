@@ -2,10 +2,10 @@
 
 # 🕹️ arc-lmm-agent
 
-[![ASI](https://img.shields.io/badge/ASI-10.71%25-brown)](https://arcprize.org/replay/8471c865-4c54-40c5-a523-dcaa681aa4f1)
+[![ASI (Best Run)](https://img.shields.io/badge/ASI-14.55%25-brown)](https://arcprize.org/replay/69c86b04-c9ff-4ae2-98e8-eade2e4c2214)
 [![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](../../LICENSE)
 
-[![ls20-arc-lmm.gif](./assets/ls20-arc-lmm.gif)](https://arcprize.org/replay/8471c865-4c54-40c5-a523-dcaa681aa4f1)
+[![ls20-arc-lmm.gif](./assets/ls20-arc-lmm.gif)](https://arcprize.org/replay/69c86b04-c9ff-4ae2-98e8-eade2e4c2214)
 
 > `arc-lmm-agent` is an autonomous navigation solver for ARC-AGI interactive environments (`ls20` game atm). It uses an episodic framework, progressive strategy learning, and robust world modeling to dynamically maneuver through complex grids, interact with rotation modifiers, systematically collect step-boosters, and reach the target zones across escalating levels.
 
@@ -94,8 +94,8 @@ When all else fails (no plan, no known targets, nothing visible on radar), the a
 The solver natively utilizes the overarching `lmm-agent` architecture for generalized intelligence logic:
 
 1. **`InternalDrive`**: The agent fires intrinsic reward/motivation signals. If the agent finds a new bonus position or discovers a completely unvisited tile, the `Curiosity` drive spikes. If the agent bumps into a newly discovered wall and loses a turn, the `Incoherence` drive registers the penalty, adjusting future behavioral tolerances.
-2. **`KnowledgeIndex` (Cross-Level Transfer)**: As the agent completes `Level N`, it synthesizes the trial's metadata into narrative English (e.g. *"Level 0 completed after 1 mod interactions and 0 bonuses... "*). This raw text is dynamically ingested into the localized `KnowledgeIndex`. When `Level N+1` begins, this long-term semantic memory primes the agent about the nature of the puzzles it will likely encounter.
-3. **`LearningEngine` (HELM)**: Traditional tabular Q-learning shapes underlying values. The agent emits a continuous localized Bellman reward stream (+10 for activating a modifier, +50 for moving closer to the target post-modifier, -1.0 for wall collisions) to fine-tune the `NOVELTY` fallback recommendations.
+1. **`KnowledgeIndex` (Cross-Level Transfer)**: As the agent completes `Level N`, it synthesizes the trial's metadata into narrative English (e.g. *"Level 0 completed after 1 mod interactions and 0 bonuses... "*). This raw text is dynamically ingested into the localized `KnowledgeIndex`. When `Level N+1` begins, this long-term semantic memory primes the agent about the nature of the puzzles it will likely encounter.
+1. **`LearningEngine` (HELM)**: Traditional tabular Q-learning shapes underlying values. The agent emits a continuous localized Bellman reward stream (+10 for activating a modifier, +50 for moving closer to the target post-modifier, -1.0 for wall collisions) to fine-tune the `NOVELTY` fallback recommendations.
 
 
 ## 🕹️ Run the agent

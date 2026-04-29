@@ -7,6 +7,8 @@ members = [
 ]
 exclude = [
     "target",
+    "examples/arc-lmm-agent",
+    "examples/chat",
 ]
 
 [workspace.dependencies]

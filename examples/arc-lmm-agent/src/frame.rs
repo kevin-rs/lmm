@@ -191,22 +191,78 @@ impl<'a> FrameContext<'a> {
     pub fn target_pos(&self) -> Option<(usize, usize)> {
         let grid = self.grid_values();
         let (rows, cols) = self.grid_dims();
-        for row in 0..rows {
-            for col in 0..cols {
-                if grid
-                    .get(row)
-                    .and_then(|r| r.get(col))
-                    .copied()
-                    .unwrap_or(-1)
-                    == 3
-                    && grid
+        let safe_rows = rows.saturating_sub(10);
+
+        for s in 5..=15 {
+            for row in 0..=safe_rows.saturating_sub(s) {
+                for col in 0..=cols.saturating_sub(s) {
+                    let v = grid
                         .get(row)
-                        .and_then(|r| r.get(col + 1))
+                        .and_then(|r| r.get(col))
                         .copied()
-                        .unwrap_or(-1)
-                        == 3
-                {
-                    return Some((col + 2, row + 2));
+                        .unwrap_or(-1);
+                    if v <= 0 || v == 12 || v == 14 || v == 11 {
+                        continue;
+                    }
+
+                    let mut valid = true;
+                    for dc in 0..s {
+                        let top = grid
+                            .get(row)
+                            .and_then(|r| r.get(col + dc))
+                            .copied()
+                            .unwrap_or(-1);
+                        let bot = grid
+                            .get(row + s - 1)
+                            .and_then(|r| r.get(col + dc))
+                            .copied()
+                            .unwrap_or(-1);
+                        if top != v || bot != v {
+                            valid = false;
+                            break;
+                        }
+                    }
+
+                    if !valid {
+                        continue;
+                    }
+
+                    for dr in 0..s {
+                        let left = grid
+                            .get(row + dr)
+                            .and_then(|r| r.get(col))
+                            .copied()
+                            .unwrap_or(-1);
+                        let right = grid
+                            .get(row + dr)
+                            .and_then(|r| r.get(col + s - 1))
+                            .copied()
+                            .unwrap_or(-1);
+                        if left != v || right != v {
+                            valid = false;
+                            break;
+                        }
+                    }
+
+                    if valid {
+                        let mut inner_matches = 0;
+                        let inner_area = (s - 2) * (s - 2);
+                        for dr in 1..s - 1 {
+                            for dc in 1..s - 1 {
+                                let inner = grid
+                                    .get(row + dr)
+                                    .and_then(|r| r.get(col + dc))
+                                    .copied()
+                                    .unwrap_or(-1);
+                                if inner == v {
+                                    inner_matches += 1;
+                                }
+                            }
+                        }
+                        if inner_matches < inner_area / 2 {
+                            return Some((col + 2, row + 2));
+                        }
+                    }
                 }
             }
         }
@@ -294,6 +350,94 @@ impl<'a> FrameContext<'a> {
             }
         }
         found
+    }
+
+    /// Detects colorful multi-color novel objects in the grid that are distinct from all
+    /// known game entities (player, modifier, bonuses, target border, background).
+    ///
+    /// A novel object is identified as a 3×3 cluster where at least three distinct
+    /// positive pixel values appear (multi-colored pattern). These correspond to the
+    /// colorful interactive objects first seen in level 2 of the game.
+    ///
+    /// # Time complexity: O(R × C) where R = rows, C = columns
+    /// # Space complexity: O(K) where K = number of novel clusters found
+    pub fn novel_object_positions(&self) -> Vec<(usize, usize)> {
+        let grid = self.grid_values();
+        let (rows, cols) = self.grid_dims();
+        let safe_rows = rows.saturating_sub(10);
+        let mut found = Vec::new();
+        let mut tagged: HashSet<(usize, usize)> = HashSet::new();
+
+        let excluded: [i64; 10] = [-1, 0, 3, 4, 5, 8, 9, 11, 12, 14];
+
+        for row in 0..safe_rows.saturating_sub(2) {
+            for col in 0..cols.saturating_sub(2) {
+                if tagged.contains(&(col, row)) {
+                    continue;
+                }
+                let mut distinct_values: HashSet<i64> = HashSet::new();
+                let mut all_positive = true;
+                for dr in 0..3 {
+                    for dc in 0..3 {
+                        let v = grid
+                            .get(row + dr)
+                            .and_then(|r| r.get(col + dc))
+                            .copied()
+                            .unwrap_or(-1);
+                        if v <= 0 || excluded.contains(&v) {
+                            all_positive = false;
+                        }
+                        if v > 0 && !excluded.contains(&v) {
+                            distinct_values.insert(v);
+                        }
+                    }
+                }
+                if all_positive && distinct_values.len() >= 3 {
+                    found.push((col + 1, row + 1));
+                    for dr in 0..3 {
+                        for dc in 0..3 {
+                            tagged.insert((col + dc, row + dr));
+                        }
+                    }
+                }
+            }
+        }
+        found
+    }
+
+    /// Computes a hash of the target box pixel area for change-detection.
+    ///
+    /// Used by the policy to detect when touching a novel object causes the target
+    /// box to change color - a cross-level learnable mechanic in level 2+.
+    ///
+    /// Returns `None` when no target position is visible.
+    ///
+    /// # Time complexity: O(1) amortised (fixed 8×8 window)
+    /// # Space complexity: O(1)
+    pub fn target_color_hash(&self) -> Option<u64> {
+        let (tx, ty) = self.target_pos()?;
+        let grid = self.grid_values();
+        let (rows, cols) = self.grid_dims();
+        let mut s = String::with_capacity(64);
+        for dr in 0..8usize {
+            let r = ty.saturating_sub(2) + dr;
+            if r >= rows {
+                break;
+            }
+            for dc in 0..8usize {
+                let c = tx.saturating_sub(2) + dc;
+                if c >= cols {
+                    break;
+                }
+                let v = grid
+                    .get(r)
+                    .and_then(|row| row.get(c))
+                    .copied()
+                    .unwrap_or(-1);
+                s.push((v.max(0) as u8 + b'0') as char);
+            }
+        }
+        Some(fnv1a_hash(&s))
     }
 
     /// Provides a list of viable action integer states avoiding the 0 reset state.

@@ -79,6 +79,8 @@ checksum = "7f202df86484c868dbad7eaa557ef785d5c66295e41b460ef922eca0723b842c"
 [[package]]
 name = "arc-agi-rs"
 version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "51392b5c4961ae9d4b77fd1741300846b7ebd15b6db025b5407d7d1055386468"
 dependencies = [
  "anyhow",
  "chrono",
@@ -99,7 +101,7 @@ dependencies = [
  "indicatif",
  "lmm-agent",
  "owo-colors",
- "rand 0.8.6",
+ "rand 0.10.1",
  "serde_json",
  "thiserror 2.0.18",
  "tokio",
@@ -1032,7 +1034,9 @@ checksum = "11d3d7f243d5c5a8b9bb5d6dd2b1602c0cb0b9db1621bafc7ed66e35ff9fe092"
 
 [[package]]
 name = "lmm"
-version = "0.2.6"
+version = "0.2.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f50710ad4f0e5a00f603a9df1330c678f245bcfcbc9cf514bae63999a1d791ef"
 dependencies = [
  "anyhow",
  "getrandom 0.4.2",
@@ -1048,7 +1052,9 @@ dependencies = [
 
 [[package]]
 name = "lmm-agent"
-version = "0.1.1"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2c6c99d0882a3a9fd11097df9451e228d5accd537be518552a5aa5ded9a3852e"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -1069,6 +1075,8 @@ dependencies = [
 [[package]]
 name = "lmm-derive"
 version = "0.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d8d7c858a0781436deffa9dc1c9d96c86c281583db0d0c8dad2a55f2880c4cb2"
 dependencies = [
  "async-trait",
  "proc-macro2",
@@ -1399,22 +1407,11 @@ checksum = "f8dcc9c7d52a811697d2151c701e0d08956f92b0e24136cf4cf27b57a6a0d9bf"
 
 [[package]]
 name = "rand"
-version = "0.8.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5ca0ecfa931c29007047d1bc58e623ab12e5590e8c7cc53200d5202b69266d8a"
-dependencies = [
- "libc",
- "rand_chacha 0.3.1",
- "rand_core 0.6.4",
-]
-
-[[package]]
-name = "rand"
 version = "0.9.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "44c5af06bb1b7d3216d91932aed5265164bf384dc89cd6ba05cf59a35f5f76ea"
 dependencies = [
- "rand_chacha 0.9.0",
+ "rand_chacha",
  "rand_core 0.9.5",
 ]
 
@@ -1431,31 +1428,12 @@ dependencies = [
 
 [[package]]
 name = "rand_chacha"
-version = "0.3.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e6c10a63a0fa32252be49d21e7709d4d4baf8d231c2dbce1eaa8141b9b127d88"
-dependencies = [
- "ppv-lite86",
- "rand_core 0.6.4",
-]
-
-[[package]]
-name = "rand_chacha"
 version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d3022b5f1df60f26e1ffddd6c66e8aa15de382ae63b3a0c1bfc0e4d3e3f325cb"
 dependencies = [
  "ppv-lite86",
  "rand_core 0.9.5",
-]
-
-[[package]]
-name = "rand_core"
-version = "0.6.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ec0be4795e2f6a28069bec0b5ff3e2ac9bafc99e6a9a7dc3547996c5c816922c"
-dependencies = [
- "getrandom 0.2.17",
 ]
 
 [[package]]
