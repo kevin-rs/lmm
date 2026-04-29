@@ -36,3 +36,6 @@ build/
 dist/
 wheels/
 *.so
+recordings/
+server.*
+environment_files/

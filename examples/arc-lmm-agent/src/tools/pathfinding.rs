@@ -161,7 +161,7 @@ impl PathfindingTool {
         )));
 
         while let Some(Reverse((_, cost, cx, cy, prev_action))) = open.pop() {
-            if cx.abs_diff(goal_x) < 5 && cy.abs_diff(goal_y) < 5 {
+            if cx == goal_x && cy == goal_y {
                 let mut path: Vec<u32> = Vec::new();
                 let mut curr = (cx, cy);
                 while curr != (start_x, start_y) {

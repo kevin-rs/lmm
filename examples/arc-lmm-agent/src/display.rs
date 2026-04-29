@@ -400,3 +400,36 @@ pub fn print_plan_invalidated() {
         "Plan invalidated (wall/unavailable)".dimmed()
     );
 }
+
+/// Prints when a launch-pedal is detected from a large position jump.
+pub fn print_pedal_detected(from: (usize, usize), to: (usize, usize), delta: usize) {
+    eprintln!(
+        "  {} {} {} → {} {}",
+        "⚡".yellow().bold(),
+        "PEDAL detected".bright_yellow().bold(),
+        format!("({},{})", from.0, from.1).bright_white(),
+        format!("({},{})", to.0, to.1).bright_white(),
+        format!("Δ={delta}px").dimmed(),
+    );
+}
+
+/// Prints when a colorful novel object is discovered during exploration.
+pub fn print_novel_object_found(pos: (usize, usize)) {
+    eprintln!(
+        "  {} {} {}",
+        "🎨".dimmed(),
+        "Novel object found".bright_cyan().bold(),
+        format!("at ({},{})", pos.0, pos.1).bright_white(),
+    );
+}
+
+/// Prints when the agent learns that touching a novel object re-colors the target.
+pub fn print_novel_object_learned() {
+    eprintln!(
+        "  {} {}",
+        "🧩".dimmed(),
+        "LEARNED: novel object changes target color!"
+            .bright_green()
+            .bold(),
+    );
+}
