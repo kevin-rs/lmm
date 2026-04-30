@@ -433,3 +433,76 @@ pub fn print_novel_object_learned() {
             .bold(),
     );
 }
+
+/// Prints when the agent discovers its own sprite via movement.
+pub fn print_self_discovered(pos: (usize, usize)) {
+    eprintln!(
+        "  {} {} {}",
+        "🪞".dimmed(),
+        "SELF-DISCOVERED".bright_cyan().bold(),
+        format!("spawn=({},{})", pos.0, pos.1).bright_white()
+    );
+}
+
+/// Prints when a new wall color is learned.
+pub fn print_wall_color_learned(color: i64) {
+    eprintln!(
+        "  {} {} {}",
+        "🧱".dimmed(),
+        "Wall color learned".bright_red().bold(),
+        format!("color={color}").dimmed()
+    );
+}
+
+/// Prints when the agent learns how many modifier passes a level requires.
+pub fn print_modifier_passes_learned(count: u32) {
+    eprintln!(
+        "  {} {} {}",
+        "🔄".dimmed(),
+        "Modifier passes learned".bright_green().bold(),
+        format!("required={count}").dimmed()
+    );
+}
+
+/// Prints when the agent detects a piece-direction mismatch after modifier activation.
+pub fn print_direction_mismatch() {
+    eprintln!(
+        "  {} {}",
+        "↻".bright_yellow().bold(),
+        "Direction mismatch - revisiting modifier".bright_yellow()
+    );
+}
+
+/// Prints when the agent reroutes to the modifier to fix orientation.
+pub fn print_reroute_modifier(pass: u32) {
+    eprintln!(
+        "  {} {} {}",
+        "✚".bright_green(),
+        "Rerouting to modifier".bright_green(),
+        format!("(pass #{})", pass).dimmed()
+    );
+}
+
+/// Prints when the agent is in the initial exploration phase (trial 0, first N steps).
+pub fn print_exploring_phase(step: usize, budget: usize) {
+    eprintln!(
+        "  {} {} {}",
+        "🔍".dimmed(),
+        "EXPLORING".bright_cyan().bold(),
+        format!("(step {}/{})", step + 1, budget).dimmed()
+    );
+}
+
+/// Prints when curiosity drives the agent toward a novel colorful object.
+///
+/// Fires each time routing priority selects a novel object as the active target.
+/// The agent deliberately visits the object to discover environment mechanics
+/// such as the target-color-change effect found in level 2.
+pub fn print_curiosity_visit(pos: (usize, usize)) {
+    eprintln!(
+        "  {} {} {}",
+        "🎨".dimmed(),
+        "Curiosity→visiting novel object".bright_cyan().bold(),
+        format!("at ({},{})", pos.0, pos.1).bright_white(),
+    );
+}

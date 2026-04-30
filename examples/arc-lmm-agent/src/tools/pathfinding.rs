@@ -267,4 +267,53 @@ impl PathfindingTool {
             .map(|&a| Self::reverse_action(a))
             .collect()
     }
+
+    /// BFS on the state-transition graph targeting any explored state whose
+    /// cached pixel position is within `radius` of `(goal_x, goal_y)`.
+    ///
+    /// Unlike [`spatial_astar`], this uses **proven transitions** from
+    /// exploration, making it reliable even when the pixel-level wall map is
+    /// incomplete. Falls back gracefully: returns `None` when no explored
+    /// state is close enough to the goal.
+    ///
+    /// # Time complexity: O(V + E)
+    /// # Space complexity: O(V)
+    pub fn bfs_to_position(
+        from: u64,
+        goal_x: usize,
+        goal_y: usize,
+        radius: usize,
+        transitions: &HashMap<u64, HashMap<u32, u64>>,
+        state_positions: &HashMap<u64, (usize, usize)>,
+    ) -> Option<Vec<u32>> {
+        let targets: HashSet<u64> = state_positions
+            .iter()
+            .filter(|&(_, &(px, py))| px.abs_diff(goal_x) + py.abs_diff(goal_y) <= radius)
+            .map(|(&s, _)| s)
+            .collect();
+
+        if targets.is_empty() {
+            return None;
+        }
+        if targets.contains(&from) {
+            return Some(vec![]);
+        }
+
+        let mut queue: VecDeque<u64> = VecDeque::from([from]);
+        let mut seen: HashSet<u64> = HashSet::from([from]);
+        let mut parents: HashMap<u64, (u64, u32)> = HashMap::new();
+
+        while let Some(current) = queue.pop_front() {
+            for (&action, &next) in transitions.get(&current).into_iter().flatten() {
+                if seen.insert(next) {
+                    parents.insert(next, (current, action));
+                    if targets.contains(&next) {
+                        return Some(Self::reconstruct_path(&parents, from, next));
+                    }
+                    queue.push_back(next);
+                }
+            }
+        }
+        None
+    }
 }

@@ -55,6 +55,19 @@ pub struct WorldMap {
 
     /// Pixel coordinate of each known state, set when a transition is first observed.
     pub state_positions: HashMap<u64, (usize, usize)>,
+
+    /// Pixel colors observed at wall positions (cross-level persistent).
+    ///
+    /// Survives [`clear`] calls so the agent carries wall-color knowledge into
+    /// subsequent levels.
+    pub learned_wall_colors: HashSet<i64>,
+
+    /// Per-level count of required modifier activations (cross-level persistent).
+    ///
+    /// Key is the zero-indexed level, value is the number of times the modifier
+    /// must be activated to align the player piece with the target. Survives
+    /// [`clear`] calls.
+    pub learned_modifier_passes: HashMap<u32, u32>,
 }
 
 impl WorldMap {
@@ -199,5 +212,25 @@ impl WorldMap {
         self.milestones.clear();
         self.win_predecessor = None;
         self.state_positions.clear();
+    }
+
+    /// Records a pixel color as a known wall color.
+    ///
+    /// Cross-level persistent: survives [`clear`] calls.
+    ///
+    /// # Time complexity: O(1)
+    /// # Space complexity: O(1)
+    pub fn learn_wall_color(&mut self, color: i64) {
+        self.learned_wall_colors.insert(color);
+    }
+
+    /// Records the required modifier activation count for a level.
+    ///
+    /// Cross-level persistent: survives [`clear`] calls.
+    ///
+    /// # Time complexity: O(1)
+    /// # Space complexity: O(1)
+    pub fn learn_modifier_passes(&mut self, level: u32, count: u32) {
+        self.learned_modifier_passes.insert(level, count);
     }
 }

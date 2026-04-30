@@ -89,6 +89,11 @@ const STUCK_THRESHOLD: u32 = 12;
 /// the agent was launched by a floor pedal rather than a voluntary action.
 const PEDAL_JUMP_THRESHOLD: usize = 15;
 
+/// Number of steps on trial 0 of each level during which the agent explores
+/// instead of routing to known targets. Forces novelty-driven discovery
+/// before the agent has built any intra-level knowledge.
+const INITIAL_EXPLORATION_BUDGET: usize = 15;
+
 /// Maps a raw game action integer to the [`ActionKey`] variant used by the Q-table.
 fn action_to_key(action: u32) -> ActionKey {
     match action {
@@ -195,6 +200,13 @@ pub struct LmmPolicy {
     /// Reversed to produce the backtrack plan when subsequent bonuses must be reached.
     outbound_path_to_first_bonus: Vec<u32>,
 
+    /// Actions recorded while routing TO the modifier (before `local_modifier_reached`).
+    /// After activation, reversed to produce a backtrack plan to efficiently return.
+    path_to_modifier: Vec<u32>,
+
+    /// Reversed path from modifier back toward the booster area.
+    backtrack_from_modifier: std::collections::VecDeque<u32>,
+
     /// Whether the agent is currently executing a return-path after claiming the first bonus.
     backtracking_from_first_bonus: bool,
 
@@ -232,8 +244,21 @@ pub struct LmmPolicy {
     /// Ephemeral object tracking to handle sprite occlusion when standing over the modifier.
     last_seen_modifier_pos: Option<(usize, usize)>,
 
-    /// Level sweep override state.
-    level_override_step: u8,
+    /// Whether the agent has confirmed its own existence by observing movement. Bro gained consciousness.
+    self_discovered: bool,
+
+    /// The pixel position where the agent spawned at the start of the current level.
+    spawn_position: Option<(usize, usize)>,
+
+    /// Learned number of modifier activations required for the current level.
+    ///
+    /// Starts at `1` and increments when the agent reaches the target zone but
+    /// the piece direction does not match. Persisted cross-level via [`WorldMap`].
+    required_modifier_passes: u32,
+
+    /// Set when the agent detects that its piece direction does not match the
+    /// target after all bonuses are collected, triggering a re-route to the modifier.
+    direction_was_wrong: bool,
 }
 
 impl LmmPolicy {
@@ -283,6 +308,8 @@ impl LmmPolicy {
             trial_bonuses_consumed: HashSet::new(),
             level_step_limits: HashMap::new(),
             outbound_path_to_first_bonus: Vec::new(),
+            path_to_modifier: Vec::new(),
+            backtrack_from_modifier: VecDeque::new(),
             backtracking_from_first_bonus: false,
             needs_second_modifier_pass: false,
             modifier_reached_step: None,
@@ -293,7 +320,10 @@ impl LmmPolicy {
             novel_object_changes_target: false,
             prev_target_color_hash: None,
             last_seen_modifier_pos: None,
-            level_override_step: 0,
+            self_discovered: false,
+            spawn_position: None,
+            required_modifier_passes: 1,
+            direction_was_wrong: false,
         }
     }
 
@@ -330,8 +360,20 @@ impl LmmPolicy {
         context: &FrameContext<'_>,
         _prev_frame: Option<&arc_agi_rs::models::FrameData>,
     ) -> Result<u32, ArcAgentError> {
-        if self.step == 0 {
-            self.level_override_step = 0;
+        if self.step == 0
+            && !self.self_discovered
+            && let Some(pos) = context.player_pos()
+        {
+            self.spawn_position = Some(pos);
+            self.self_discovered = true;
+            display::print_self_discovered(pos);
+            self.agent.add_ltm_message(Message::new(
+                "self_discovery",
+                format!(
+                    "Agent discovered at ({},{}) on level={} trial={}",
+                    pos.0, pos.1, self.current_level_idx, self.trial
+                ),
+            ));
         }
 
         let current_state = context.state_key();
@@ -420,6 +462,10 @@ impl LmmPolicy {
         let chosen = self.choose(current_state, &available, context);
         display::print_action(chosen, "chosen");
 
+        if !self.local_modifier_reached && !self.trial_bonuses_consumed.is_empty() {
+            self.path_to_modifier.push(chosen);
+        }
+
         if self.local_modifier_reached
             && self.trial_bonuses_consumed.is_empty()
             && !self.backtracking_from_first_bonus
@@ -455,6 +501,22 @@ impl LmmPolicy {
                 }
             } else {
                 self.world.record_wall(prev_sk, prev_ga);
+                if let Some(prev_pos) = self.prev_player_pos {
+                    let (nx, ny) =
+                        PathfindingTool::action_next_pos(prev_pos.0, prev_pos.1, prev_ga);
+                    let wall_color = context.pixel_at(nx, ny);
+                    if wall_color > 0 && !self.world.learned_wall_colors.contains(&wall_color) {
+                        self.world.learn_wall_color(wall_color);
+                        display::print_wall_color_learned(wall_color);
+                        self.agent.add_ltm_message(Message::new(
+                            "wall_color_learned",
+                            format!(
+                                "Wall color {} learned at ({},{}) on level={}",
+                                wall_color, nx, ny, self.current_level_idx
+                            ),
+                        ));
+                    }
+                }
                 self.agent.internal_drive.record_incoherence(0.5);
                 self.plan.clear();
             }
@@ -526,7 +588,6 @@ impl LmmPolicy {
         self.prev_ui_hash = None;
         self.plan.clear();
         self.known_bonuses.clear();
-        self.known_novel_objects.clear();
         self.novel_objects_consumed.clear();
         self.prev_target_color_hash = None;
         self.current_level_idx = context.inner.levels_completed;
@@ -536,12 +597,22 @@ impl LmmPolicy {
         self.trial_mod_visits = 0;
         self.trial_bonuses_consumed.clear();
         self.outbound_path_to_first_bonus.clear();
+        self.path_to_modifier.clear();
+        self.backtrack_from_modifier.clear();
         self.backtracking_from_first_bonus = false;
         self.needs_second_modifier_pass = false;
         self.locked_final_target = None;
         self.modifier_reached_step = None;
         self.last_seen_modifier_pos = None;
-        self.level_override_step = 0;
+        self.self_discovered = false;
+        self.spawn_position = None;
+        self.required_modifier_passes = self
+            .world
+            .learned_modifier_passes
+            .get(&context.inner.levels_completed)
+            .copied()
+            .unwrap_or(1);
+        self.direction_was_wrong = false;
 
         self.world.record_milestone(current_state);
         self.milestone_levels
@@ -579,13 +650,22 @@ impl LmmPolicy {
 
     /// Detects modifier activation via spatial proximity or piece-match heuristic.
     ///
+    /// A player position that matches a known floor pedal coordinate is never
+    /// treated as a modifier activation: pedal cells may contain a cross-shaped
+    /// pattern that visually resembles the modifier sprite but they teleport the
+    /// agent rather than rotating its piece.
+    ///
     /// Sets `local_modifier_reached` and records the modifier position in
     /// `known_modifiers` on the first detection per trial.
     ///
-    /// # Time complexity: O(1)
+    /// # Time complexity: O(P) where P = number of known pedal positions
+    /// # Space complexity: O(1)
     fn update_modifier_detection(&mut self, context: &FrameContext<'_>) {
-        if let Some(pos) = context.modifier_pos() {
-            self.last_seen_modifier_pos = Some(pos);
+        for pos in context.modifier_positions() {
+            if !self.global_pedal_positions.contains(&pos) {
+                self.last_seen_modifier_pos = Some(pos);
+                break;
+            }
         }
 
         if self.local_modifier_reached {
@@ -597,6 +677,7 @@ impl LmmPolicy {
         if let Some(modifier_pos) = self.last_seen_modifier_pos
             && let Some(player_pos) = context.player_pos()
             && !self.local_modifier_reached
+            && !self.global_pedal_positions.contains(&player_pos)
         {
             let sx = snap_to_grid(modifier_pos.0, player_pos.0);
             let sy = snap_to_grid(modifier_pos.1, player_pos.1);
@@ -605,7 +686,13 @@ impl LmmPolicy {
                 activated_pos = Some(modifier_pos);
             }
         }
-        if context.player_piece_matches_target() && self.step > 0 {
+        if context.player_piece_matches_target()
+            && self.step > 0
+            && !context
+                .player_pos()
+                .map(|p| self.global_pedal_positions.contains(&p))
+                .unwrap_or(false)
+        {
             activated = true;
             activated_pos = activated_pos.or(context.player_pos());
         }
@@ -613,12 +700,19 @@ impl LmmPolicy {
         if activated {
             self.local_modifier_reached = true;
             self.modifier_reached_step = Some(self.step);
-            self.plan.clear();
             self.outbound_path_to_first_bonus.clear();
             self.backtracking_from_first_bonus = false;
             self.locked_final_target = None;
 
             self.needs_second_modifier_pass = !self.known_bonuses.is_empty();
+
+            if !self.path_to_modifier.is_empty() && !self.trial_bonuses_consumed.is_empty() {
+                self.backtrack_from_modifier =
+                    PathfindingTool::reverse_path(&self.path_to_modifier).into();
+                self.backtrack_from_modifier.truncate(5);
+            }
+            self.plan.clear();
+            self.path_to_modifier.clear();
 
             if let Some(pos) = activated_pos {
                 self.known_modifiers.insert(pos);
@@ -788,6 +882,12 @@ impl LmmPolicy {
         if chebyshev >= PEDAL_JUMP_THRESHOLD && !self.global_pedal_positions.contains(&prev_pos) {
             self.global_pedal_positions.insert(prev_pos);
             display::print_pedal_detected(prev_pos, current_pos, chebyshev);
+
+            if self.last_seen_modifier_pos == Some(prev_pos) {
+                self.last_seen_modifier_pos = None;
+            }
+            self.known_modifiers.remove(&prev_pos);
+
             self.agent.add_ltm_message(Message::new(
                 "pedal_discovered",
                 format!(
@@ -806,7 +906,37 @@ impl LmmPolicy {
     /// # Time complexity: O(R × C) per frame (delegated to `frame.rs`)
     /// # Space complexity: O(N) where N = novel objects found
     fn update_novel_objects(&mut self, context: &FrameContext<'_>) {
+        let target_pos = context.target_pos();
+        let player_pos = context.player_pos();
+
         for pos in context.novel_object_positions() {
+            if let Some((tx, ty)) = target_pos
+                && pos.0.abs_diff(tx) < 10
+                && pos.1.abs_diff(ty) < 10
+            {
+                continue;
+            }
+            if let Some((px, py)) = player_pos
+                && pos.0.abs_diff(px) < 6
+                && pos.1.abs_diff(py) < 6
+            {
+                continue;
+            }
+            if self
+                .known_modifiers
+                .iter()
+                .any(|&(mx, my)| pos.0.abs_diff(mx) < 10 && pos.1.abs_diff(my) < 10)
+            {
+                continue;
+            }
+            if self
+                .known_bonuses
+                .iter()
+                .any(|&(bx, by)| pos.0.abs_diff(bx) < 10 && pos.1.abs_diff(by) < 10)
+            {
+                continue;
+            }
+
             if !self
                 .known_novel_objects
                 .iter()
@@ -942,60 +1072,6 @@ impl LmmPolicy {
     fn choose(&mut self, state: u64, avail: &[u32], context: &FrameContext<'_>) -> u32 {
         let trial_visits_here = self.trial_visits.get(&state).copied().unwrap_or(0);
 
-        if context.inner.levels_completed == 2
-            && let Some((px, py)) = context.player_pos()
-        {
-            if px == 54 && py == 10 && self.level_override_step == 0 {
-                self.level_override_step = 1;
-                return 3;
-            } else if px == 49 && py == 10 && self.level_override_step == 1 {
-                self.level_override_step = 3;
-                self.local_modifier_reached = true;
-                self.needs_second_modifier_pass = false;
-                self.plan.clear();
-                return 4;
-            }
-
-            if self.level_override_step == 3
-                && !self.novel_objects_consumed.is_empty()
-                && px == 54
-                && py == 10
-                && self.plan.is_empty()
-            {
-                self.plan = std::collections::VecDeque::from(vec![3u32, 4]);
-                self.level_override_step = 4;
-            }
-
-            if self.level_override_step == 3
-                && px <= 24
-                && self.novel_objects_consumed.is_empty()
-                && (33..42).contains(&py)
-                && !self.world.is_wall(state, 2)
-            {
-                self.plan.clear();
-                return 2;
-            }
-
-            if self.level_override_step == 3
-                && self.novel_objects_consumed.is_empty()
-                && (42..=50).contains(&py)
-            {
-                let canonical = self
-                    .known_novel_objects
-                    .first()
-                    .copied()
-                    .unwrap_or((30, 40));
-                self.novel_objects_consumed.insert(canonical);
-                self.locked_final_target = None;
-                self.plan.clear();
-            }
-
-            if self.level_override_step == 4 && px == 54 && py == 10 && self.plan.is_empty() {
-                self.plan = std::collections::VecDeque::from(vec![1u32, 2]);
-                self.level_override_step = 5;
-            }
-        }
-
         let stuck_threshold = if self.local_modifier_reached {
             STUCK_THRESHOLD * 2
         } else {
@@ -1007,18 +1083,39 @@ impl LmmPolicy {
             return action;
         }
 
-        if let Some(action) = self.follow_plan(state, avail) {
-            return action;
-        }
+        let exploring_phase = self.trial == 0 && self.step < INITIAL_EXPLORATION_BUDGET;
 
-        if let Some(action) = self.route_to_active_target(state, avail, context) {
-            return action;
-        }
+        if !exploring_phase {
+            if let Some(action) = self.follow_plan(state, avail) {
+                return action;
+            }
 
-        if self.trial > 0
-            && let Some(action) = self.route_via_milestone_bfs(state, avail)
-        {
-            return action;
+            if let Some(&next) = self.backtrack_from_modifier.front() {
+                if avail.contains(&next) && !self.world.is_wall(state, next) {
+                    self.backtrack_from_modifier.pop_front();
+                    display::print_routing(
+                        "BACKTRACK→Modifier",
+                        (0, 0),
+                        self.backtrack_from_modifier.len(),
+                        next,
+                    );
+                    return next;
+                } else {
+                    self.backtrack_from_modifier.clear();
+                }
+            }
+
+            if let Some(action) = self.route_to_active_target(state, avail, context) {
+                return action;
+            }
+
+            if self.trial > 0
+                && let Some(action) = self.route_via_milestone_bfs(state, avail)
+            {
+                return action;
+            }
+        } else {
+            display::print_exploring_phase(self.step, INITIAL_EXPLORATION_BUDGET);
         }
 
         self.explore(state, avail)
@@ -1134,14 +1231,16 @@ impl LmmPolicy {
         None
     }
 
-    /// Determines the current active target and routes toward it.
+    /// Determines the current active target and routes toward it using a
+    /// fully generic priority chain with no level-specific logic.
     ///
-    /// Target priority:
-    /// 1. If modifier not yet reached: route to modifier position.
-    /// 2. If modifier reached and uncollected bonuses exist: route to nearest bonus.
-    ///    After first bonus consumed, the backtrack plan takes over via `follow_plan`.
-    ///    Once backtrack completes, route forward to next bonus.
-    /// 3. If modifier reached and all bonuses collected: route to final target.
+    /// Target priority (unified across all levels):
+    /// 1. If modifier not yet reached and known: route to modifier.
+    /// 2. If modifier reached but `needs_second_modifier_pass`: reroute to modifier.
+    /// 3. If modifier reached and uncollected bonuses exist: route to nearest bonus.
+    /// 4. If unconsumed novel objects exist: route to nearest novel object.
+    /// 5. If direction mismatch detected: reroute to modifier (learned pass count).
+    /// 6. All collected and direction matches: lock and route to final target.
     ///
     /// # Time complexity: O(N log N) worst-case (spatial A\*)
     /// # Space complexity: O(N)
@@ -1175,19 +1274,39 @@ impl LmmPolicy {
             .copied()
             .collect();
 
+        let mut all_pedals = self
+            .global_pedal_positions
+            .iter()
+            .copied()
+            .collect::<Vec<_>>();
+        for pos in context.pedal_positions() {
+            if !all_pedals.contains(&pos) {
+                all_pedals.push(pos);
+            }
+        }
+
+        let will_use_pedal_shortcut = if let (Some(tp), Some(pp)) = (target_pos, player_pos) {
+            if let Some(&pedal) = all_pedals
+                .iter()
+                .min_by_key(|&&(pxx, pyy)| pp.0.abs_diff(pxx) + pp.1.abs_diff(pyy))
+            {
+                let dist_target = pp.0.abs_diff(tp.0) + pp.1.abs_diff(tp.1);
+                let dist_pedal = pp.0.abs_diff(pedal.0) + pp.1.abs_diff(pedal.1);
+                dist_target > 30 && dist_pedal < dist_target
+            } else {
+                false
+            }
+        } else {
+            false
+        };
+
         let active_target: Option<(usize, usize)>;
         let target_label: &str;
 
-        if self.current_level_idx == 0 {
-            if self.local_modifier_reached || context.player_piece_matches_target() {
-                if self.locked_final_target.is_none()
-                    && let Some(tp) = target_pos
-                {
-                    self.locked_final_target = Some(tp);
-                    display::print_target_locked(tp);
-                }
-                active_target = self.locked_final_target.or(target_pos);
-                target_label = "Target";
+        if !self.local_modifier_reached {
+            if modifier_pos.is_some() {
+                active_target = modifier_pos;
+                target_label = "Modifier";
             } else if self.trial > 0 && known_mod_pos.is_some() {
                 active_target = known_mod_pos;
                 target_label = "Modifier";
@@ -1195,28 +1314,43 @@ impl LmmPolicy {
                 active_target = None;
                 target_label = "None";
             }
-        } else if !self.local_modifier_reached {
-            active_target = modifier_pos;
-            target_label = "Modifier";
         } else if self.needs_second_modifier_pass && self.plan.is_empty() {
-            if let Some(mod_pos) = known_mod_pos.or(modifier_pos) {
-                if let Some((px, py)) = player_pos {
+            if context.player_piece_matches_target() {
+                self.needs_second_modifier_pass = false;
+                active_target = target_pos;
+                target_label = "Target";
+            } else if let Some(mod_pos) = known_mod_pos.or(modifier_pos) {
+                if !uncollected_bonuses.is_empty() {
+                    if let Some((px, py)) = player_pos {
+                        let nearest = uncollected_bonuses
+                            .iter()
+                            .min_by_key(|&&(bx, by)| px.abs_diff(bx) + py.abs_diff(by))
+                            .copied();
+                        active_target = nearest;
+                    } else {
+                        active_target = uncollected_bonuses.first().copied();
+                    }
+                    target_label = "Bonus";
+                } else if !unconsumed_novel.is_empty() {
+                    if let Some((px, py)) = player_pos {
+                        let nearest = unconsumed_novel
+                            .iter()
+                            .min_by_key(|&&(ox, oy)| px.abs_diff(ox) + py.abs_diff(oy))
+                            .copied();
+                        display::print_curiosity_visit(nearest.unwrap_or((0, 0)));
+                        active_target = nearest;
+                    } else {
+                        active_target = unconsumed_novel.first().copied();
+                    }
+                    target_label = "NovelObject";
+                } else if let Some((px, py)) = player_pos {
                     let sx = snap_to_grid(mod_pos.0, px);
                     let sy = snap_to_grid(mod_pos.1, py);
                     if px == sx && py == sy {
                         display::print_second_mod_pass(true);
                         self.needs_second_modifier_pass = false;
-                        if !uncollected_bonuses.is_empty() {
-                            let nearest = uncollected_bonuses
-                                .iter()
-                                .min_by_key(|&&(bx, by)| px.abs_diff(bx) + py.abs_diff(by))
-                                .copied();
-                            active_target = nearest;
-                            target_label = "Bonus";
-                        } else {
-                            active_target = target_pos;
-                            target_label = "Target";
-                        }
+                        active_target = target_pos;
+                        target_label = "Target";
                     } else {
                         display::print_second_mod_pass(false);
                         active_target = Some(mod_pos);
@@ -1228,8 +1362,13 @@ impl LmmPolicy {
                 }
             } else {
                 self.needs_second_modifier_pass = false;
-                active_target = target_pos;
-                target_label = "Target";
+                if !unconsumed_novel.is_empty() {
+                    active_target = unconsumed_novel.first().copied();
+                    target_label = "NovelObject";
+                } else {
+                    active_target = target_pos;
+                    target_label = "Target";
+                }
             }
         } else if !uncollected_bonuses.is_empty() {
             if let Some((px, py)) = player_pos {
@@ -1243,28 +1382,7 @@ impl LmmPolicy {
                 active_target = target_pos;
                 target_label = "Target";
             }
-        } else if !self.novel_object_changes_target && !unconsumed_novel.is_empty() {
-            if let Some((px, py)) = player_pos {
-                let nearest = unconsumed_novel
-                    .iter()
-                    .min_by_key(|&&(ox, oy)| px.abs_diff(ox) + py.abs_diff(oy))
-                    .copied();
-                active_target = nearest;
-                target_label = "NovelObject";
-            } else {
-                active_target = target_pos;
-                target_label = "Target";
-            }
-        } else if context.inner.levels_completed == 2
-            && self.level_override_step == 3
-            && !self.novel_objects_consumed.is_empty()
-        {
-            active_target = Some((54, 10));
-            target_label = "ModifierApproach";
-        } else if context.inner.levels_completed == 2
-            && self.level_override_step == 3
-            && !unconsumed_novel.is_empty()
-        {
+        } else if !unconsumed_novel.is_empty() {
             if let Some((px, py)) = player_pos {
                 let nearest = unconsumed_novel
                     .iter()
@@ -1276,36 +1394,92 @@ impl LmmPolicy {
                 active_target = unconsumed_novel.first().copied();
                 target_label = "NovelObject";
             }
-        } else if context.inner.levels_completed == 2
-            && self.level_override_step == 3
-            && self.novel_objects_consumed.is_empty()
-            && self.known_novel_objects.is_empty()
+        } else if self.direction_was_wrong
+            && !context.direction_matches_target()
+            && self.trial_mod_visits < self.required_modifier_passes
         {
-            active_target = Some((30, 40));
-            target_label = "NovelObjectSearch";
-        } else {
-            if self.locked_final_target.is_none()
-                && let Some(tp) = target_pos
-            {
-                self.locked_final_target = Some(tp);
-                display::print_target_locked(tp);
+            if let Some(mod_pos) = known_mod_pos.or(modifier_pos) {
+                display::print_reroute_modifier(self.trial_mod_visits + 1);
+                active_target = Some(mod_pos);
+                target_label = "ModifierReroute";
+            } else {
+                active_target = target_pos;
+                target_label = "Target";
             }
-            active_target = self.locked_final_target.or(target_pos);
-            target_label = "Target";
+        } else {
+            if self.local_modifier_reached
+                && !context.direction_matches_target()
+                && !self.direction_was_wrong
+                && uncollected_bonuses.is_empty()
+                && unconsumed_novel.is_empty()
+                && self.modifier_reached_step.is_none_or(|s| self.step > s)
+                && !will_use_pedal_shortcut
+            {
+                self.direction_was_wrong = true;
+                self.required_modifier_passes += 1;
+                display::print_direction_mismatch();
+                self.world
+                    .learn_modifier_passes(self.current_level_idx, self.required_modifier_passes);
+                display::print_modifier_passes_learned(self.required_modifier_passes);
+                self.agent.add_ltm_message(Message::new(
+                    "modifier_passes_learned",
+                    format!(
+                        "Level {} requires {} modifier passes to align piece.",
+                        self.current_level_idx, self.required_modifier_passes
+                    ),
+                ));
+                self.local_modifier_reached = false;
+                self.plan.clear();
+                if let Some(mod_pos) = known_mod_pos.or(modifier_pos) {
+                    display::print_reroute_modifier(self.trial_mod_visits + 1);
+                    active_target = Some(mod_pos);
+                    target_label = "ModifierReroute";
+                } else {
+                    active_target = target_pos;
+                    target_label = "Target";
+                }
+            } else if !unconsumed_novel.is_empty() {
+                if let Some((px, py)) = player_pos {
+                    let nearest = unconsumed_novel
+                        .iter()
+                        .min_by_key(|&&(ox, oy)| px.abs_diff(ox) + py.abs_diff(oy))
+                        .copied();
+                    display::print_curiosity_visit(nearest.unwrap_or((0, 0)));
+                    active_target = nearest;
+                    target_label = "NovelObject";
+                } else {
+                    active_target = unconsumed_novel.first().copied();
+                    target_label = "NovelObject";
+                }
+            } else {
+                if self.locked_final_target.is_none()
+                    && let Some(tp) = target_pos
+                {
+                    self.locked_final_target = Some(tp);
+                    display::print_target_locked(tp);
+                }
+                active_target = self.locked_final_target.or(target_pos);
+                target_label = "Target";
+            }
         }
 
-        let (goal_x, goal_y) = active_target?;
+        let mut target_lbl = target_label;
         let (px, py) = player_pos?;
+        let (mut goal_x, mut goal_y) = active_target?;
 
-        let mut sx = snap_to_grid(goal_x, px);
-        let mut sy = snap_to_grid(goal_y, py);
-
-        if context.inner.levels_completed == 2
-            && (target_label == "Modifier" || target_label == "Modifier2")
+        if target_lbl == "Target"
+            && will_use_pedal_shortcut
+            && let Some(&pedal) = all_pedals
+                .iter()
+                .min_by_key(|&&(pxx, pyy)| px.abs_diff(pxx) + py.abs_diff(pyy))
         {
-            sx = 54;
-            sy = 10;
+            goal_x = pedal.0;
+            goal_y = pedal.1;
+            target_lbl = "Pedal";
         }
+
+        let sx = snap_to_grid(goal_x, px);
+        let sy = snap_to_grid(goal_y, py);
 
         let at_goal = px == sx && py == sy;
         if at_goal {
@@ -1324,7 +1498,26 @@ impl LmmPolicy {
             && avail.contains(&first)
             && !self.world.is_wall(state, first)
         {
-            let mode = format!("GENERAL→{target_label}_Cartesian");
+            let mode = format!("GENERAL→{target_lbl}_Cartesian");
+            display::print_routing(&mode, (sx, sy), path.len(), first);
+            if path.len() > 1 {
+                self.plan = path.into_iter().skip(1).collect();
+            }
+            return Some(first);
+        }
+
+        if let Some(path) = PathfindingTool::bfs_to_position(
+            state,
+            sx,
+            sy,
+            10,
+            &self.world.transitions,
+            &self.world.state_positions,
+        ) && let Some(&first) = path.first()
+            && avail.contains(&first)
+            && !self.world.is_wall(state, first)
+        {
+            let mode = format!("GENERAL→{target_lbl}_GraphBFS");
             display::print_routing(&mode, (sx, sy), path.len(), first);
             if path.len() > 1 {
                 self.plan = path.into_iter().skip(1).collect();
@@ -1350,8 +1543,8 @@ impl LmmPolicy {
                     .predict(state, *action)
                     .map(|ns| self.trial_visits.get(&ns).copied().unwrap_or(0))
                     .unwrap_or(0);
-                if pred_visits == 0 {
-                    let mode = format!("GENERAL→{target_label}");
+                if pred_visits <= 1 {
+                    let mode = format!("GENERAL→{target_lbl}");
                     display::print_routing(&mode, (goal_x, goal_y), 1, *action);
                     return Some(*action);
                 }
@@ -1657,10 +1850,15 @@ impl LmmPolicy {
         self.trial_mod_visits = 0;
         self.trial_bonuses_consumed.clear();
         self.outbound_path_to_first_bonus.clear();
+        self.path_to_modifier.clear();
+        self.backtrack_from_modifier.clear();
         self.backtracking_from_first_bonus = false;
         self.needs_second_modifier_pass = false;
         self.locked_final_target = None;
         self.modifier_reached_step = None;
+        self.direction_was_wrong = false;
+        self.novel_objects_consumed.clear();
+        self.prev_player_pos = None;
     }
 
     /// Records a terminal reward for the final state of a trial and stores the
