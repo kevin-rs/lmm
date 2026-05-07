@@ -20,14 +20,14 @@ impl GenerationMode {
         }
     }
 
-    pub fn icon(&self) -> &'static str {
+    pub fn icon_class(&self) -> &'static str {
         match self {
-            Self::Sentence => "✍️",
-            Self::Paragraph => "📄",
-            Self::Essay => "📖",
-            Self::Summarize => "✂️",
-            Self::Predict => "🔮",
-            Self::Ask => "🌐",
+            Self::Sentence => "fa-solid fa-pen-nib",
+            Self::Paragraph => "fa-solid fa-align-left",
+            Self::Essay => "fa-solid fa-book-open",
+            Self::Summarize => "fa-solid fa-scissors",
+            Self::Predict => "fa-solid fa-wand-magic-sparkles",
+            Self::Ask => "fa-solid fa-globe",
         }
     }
 
@@ -44,12 +44,12 @@ impl GenerationMode {
 
     pub fn color_class(&self) -> &'static str {
         match self {
-            Self::Sentence => "bg-vect-violet text-white",
-            Self::Paragraph => "bg-violet-700 text-white",
-            Self::Essay => "bg-violet-600 text-white",
-            Self::Summarize => "bg-vect-cyan text-vect-bg",
-            Self::Predict => "bg-indigo-600 text-white",
-            Self::Ask => "bg-teal-600 text-white",
+            Self::Sentence => "bg-vect-elevated text-vect-text",
+            Self::Paragraph => "bg-vect-elevated text-vect-text",
+            Self::Essay => "bg-vect-elevated text-vect-text",
+            Self::Summarize => "bg-vect-elevated text-vect-text",
+            Self::Predict => "bg-vect-elevated text-vect-text",
+            Self::Ask => "bg-vect-accent/20 text-vect-accent",
         }
     }
 

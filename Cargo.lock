@@ -610,9 +610,9 @@ checksum = "8c98b077c7463d01d22dde8a24378ddf1ca7263dc687cffbed38819ea6c21131"
 
 [[package]]
 name = "duckduckgo"
-version = "0.3.1"
+version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0d2f5930dc4e7056b3e8dfc80ede384c5589759f97673df8ec1c17a5aa07a106"
+checksum = "3e844e28d1de0538ae3d851c46a4b9c532ba6b4f63acd4ac1d96fce90c5f79ca"
 dependencies = [
  "anyhow",
  "chrono",
