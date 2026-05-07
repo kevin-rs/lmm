@@ -76,7 +76,7 @@ pub fn sidebar(props: &SidebarProps) -> Html {
                                 id={format!("mode-{}", m.label().to_lowercase())}
                                 title={m.description()}
                             >
-                                <span class="text-base shrink-0" aria-hidden="true">{m.icon()}</span>
+                                <i class={classes!(m.icon_class(), "text-sm", "shrink-0", "w-4", "text-center")} aria-hidden="true"></i>
                                 <div class="flex flex-col items-start min-w-0">
                                     <span class="text-sm font-medium leading-none">{m.label()}</span>
                                     <span class="text-[10px] opacity-50 leading-snug mt-0.5 truncate w-full">{m.description()}</span>
@@ -106,7 +106,7 @@ pub fn sidebar(props: &SidebarProps) -> Html {
                             class={classes!(
                                 "toggle-track",
                                 "shrink-0",
-                                if props.stochastic { "bg-vect-violet" } else { "bg-vect-border" }
+                                if props.stochastic { "bg-vect-accent" } else { "bg-vect-border" }
                             )}
                         >
                             <span class={classes!(
@@ -119,7 +119,7 @@ pub fn sidebar(props: &SidebarProps) -> Html {
                         <div class="flex flex-col gap-1.5 animate-fade-in">
                             <div class="control-row">
                                 <label for="prob-slider" class="text-sm text-vect-text">{"Probability"}</label>
-                                <span class="text-sm font-mono font-semibold text-vect-violet-light" aria-live="polite">
+                                <span class="text-sm font-mono font-semibold text-vect-accent" aria-live="polite">
                                     {format!("{}%", props.probability)}
                                 </span>
                             </div>
@@ -129,7 +129,7 @@ pub fn sidebar(props: &SidebarProps) -> Html {
                                 min="1"
                                 max="100"
                                 value={props.probability.to_string()}
-                                class="w-full h-1.5 rounded-full cursor-pointer accent-vect-violet bg-vect-border"
+                                class="w-full h-1.5 rounded-full cursor-pointer accent-vect-accent bg-vect-border"
                                 oninput={on_prob}
                                 aria-label="Synonym replacement probability"
                                 aria-valuemin="1"
@@ -167,7 +167,7 @@ pub fn sidebar(props: &SidebarProps) -> Html {
                                         class={classes!(
                                             "toggle-track",
                                             "shrink-0",
-                                            if props.web_search { "bg-vect-cyan" } else { "bg-vect-border" }
+                                            if props.web_search { "bg-vect-accent" } else { "bg-vect-border" }
                                         )}
                                     >
                                         <span class={classes!(
@@ -177,8 +177,9 @@ pub fn sidebar(props: &SidebarProps) -> Html {
                                     </button>
                                 </div>
                                 if props.web_search {
-                                    <p class="text-xs text-vect-cyan-light animate-fade-in leading-relaxed">
-                                        {"🌐 DuckDuckGo search fetches live context for your query."}
+                                    <p class="text-xs text-vect-accent animate-fade-in leading-relaxed">
+                                        <i class="fa-solid fa-globe mr-1" aria-hidden="true"></i>
+                                        {"DuckDuckGo search fetches live context for your query."}
                                     </p>
                                 } else {
                                     <p class="text-xs text-vect-subtle leading-relaxed">
@@ -251,7 +252,7 @@ pub fn sidebar(props: &SidebarProps) -> Html {
             <div class="mt-auto pt-4 border-t border-vect-border/40">
                 <p class="text-[11px] text-vect-subtle leading-relaxed">
                     {"Powered by "}
-                    <span class="text-vect-violet-light font-semibold">{"LMM"}</span>
+                    <span class="text-vect-text font-semibold">{"LMM"}</span>
                     {" - Large Mathematical Model. All text generation runs locally in your browser via WebAssembly."}
                 </p>
             </div>

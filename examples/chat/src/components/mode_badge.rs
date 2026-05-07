@@ -10,7 +10,7 @@ pub struct ModeBadgeProps {
 pub fn mode_badge(props: &ModeBadgeProps) -> Html {
     html! {
         <span class={classes!("badge", props.mode.color_class())} aria-label={format!("Mode: {}", props.mode.label())}>
-            <span aria-hidden="true">{props.mode.icon()}</span>
+            <i class={props.mode.icon_class()} aria-hidden="true"></i>
             {" "}{props.mode.label()}
         </span>
     }

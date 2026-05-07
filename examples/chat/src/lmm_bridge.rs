@@ -1,7 +1,5 @@
 use crate::types::SearchLink;
-use lmm::net::{
-    SearchAggregator, corpus_from_response, corpus_from_results, corpus_from_results_raw,
-};
+use lmm::net::{SearchAggregator, corpus_from_response};
 use lmm::predict::TextPredictor;
 use lmm::stochastic::StochasticEnhancer;
 use lmm::text::{EssayGenerator, ParagraphGenerator, SentenceGenerator, TextSummarizer};
@@ -11,6 +9,20 @@ fn enhance(text: &str, stochastic: bool, prob: f64) -> String {
         StochasticEnhancer::new(prob).enhance(text)
     } else {
         text.to_string()
+    }
+}
+
+fn local_fallback(prompt: &str, sentences: usize, stochastic: bool, prob: f64) -> String {
+    match ParagraphGenerator::new(sentences.max(2), 50, 5).generate(prompt) {
+        Ok(p) => enhance(&p, stochastic, prob),
+        Err(_) => match SentenceGenerator::new(50, 5).generate(prompt) {
+            Ok(s) => enhance(&s, stochastic, prob),
+            Err(_) => format!(
+                "I could not retrieve web results for \"{prompt}\" \
+                 and the local model lacks enough context to generate a meaningful response. \
+                 Please try a more descriptive query."
+            ),
+        },
     }
 }
 
@@ -77,7 +89,9 @@ pub async fn ask(
     stochastic: bool,
     prob: f64,
 ) -> (String, Vec<SearchLink>) {
+    let prompt = prompt.trim();
     let aggregator = SearchAggregator::new();
+
     let api_result = aggregator.get_response(prompt).await;
 
     let corpus = api_result
@@ -85,7 +99,7 @@ pub async fn ask(
         .map(corpus_from_response)
         .unwrap_or_default();
 
-    let mut links: Vec<SearchLink> = api_result
+    let links: Vec<SearchLink> = api_result
         .as_ref()
         .map(|resp| {
             resp.related_topics
@@ -116,19 +130,9 @@ pub async fn ask(
     let final_corpus = if corpus.trim().is_empty() {
         #[cfg(not(target_arch = "wasm32"))]
         {
+            use lmm::net::{corpus_from_results, corpus_from_results_raw};
             match aggregator.fetch(prompt, 6).await {
                 Ok(results) => {
-                    if links.is_empty() {
-                        links = results
-                            .iter()
-                            .filter(|r| !r.url.is_empty())
-                            .map(|r| SearchLink {
-                                title: r.title.clone(),
-                                url: r.url.clone(),
-                            })
-                            .take(10)
-                            .collect();
-                    }
                     let quality = corpus_from_results(&results);
                     if quality.trim().is_empty() {
                         corpus_from_results_raw(&results)
@@ -148,12 +152,7 @@ pub async fn ask(
     };
 
     if final_corpus.trim().is_empty() {
-        return (
-            "The DuckDuckGo Instant Answer API returned no content for this query. \
-             Try a more specific well-known topic."
-                .to_string(),
-            links,
-        );
+        return (local_fallback(prompt, sentences, stochastic, prob), links);
     }
 
     let summary = match TextSummarizer::new(sentences.max(2), 50, 5)
@@ -164,7 +163,7 @@ pub async fn ask(
             .map(|s| enhance(s, stochastic, prob))
             .collect::<Vec<_>>()
             .join(" "),
-        Err(_) => "Could not summarize search results.".to_string(),
+        Err(_) => local_fallback(prompt, sentences, stochastic, prob),
     };
 
     (summary, links)

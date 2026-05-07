@@ -35,7 +35,7 @@
 //! println!("Saved to {path}");
 //! ```
 
-#![cfg_attr(target_arch = "wasm32", allow(dead_code))]
+#![cfg_attr(target_arch = "wasm32", allow(unused_imports), allow(dead_code))]
 use crate::error::{LmmError, Result};
 use phf::{Map, phf_map};
 use strum_macros::{AsRefStr, Display, EnumIter, EnumString};

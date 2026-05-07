@@ -29,7 +29,7 @@
   }
 
   ::-webkit-scrollbar-track {
-    @apply bg-vect-surface;
+    @apply bg-transparent;
   }
 
   ::-webkit-scrollbar-thumb {
@@ -38,11 +38,11 @@
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    @apply bg-vect-violet;
+    @apply bg-vect-subtle;
   }
 
   ::selection {
-    @apply bg-vect-violet text-white;
+    @apply bg-vect-accent text-white;
   }
 }
 
@@ -52,41 +52,41 @@
   }
 
   .vect-btn-primary {
-    @apply inline-flex items-center justify-center gap-2 bg-vect-violet hover:bg-vect-violet-hover
-      text-white font-semibold px-4 py-2 rounded-xl transition-all duration-200
-      focus:outline-none focus:ring-2 focus:ring-vect-violet focus:ring-offset-2 focus:ring-offset-vect-bg
-      active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply inline-flex items-center justify-center gap-2 bg-vect-accent hover:bg-vect-accent-hover
+      text-white font-medium px-4 py-2 rounded-full transition-all duration-200
+      focus:outline-none focus:ring-2 focus:ring-vect-accent focus:ring-offset-2 focus:ring-offset-vect-bg
+      active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed;
   }
 
   .vect-btn-ghost {
     @apply inline-flex items-center justify-center gap-2 bg-transparent hover:bg-vect-elevated
-      text-vect-muted hover:text-vect-text font-medium px-3 py-2 rounded-xl transition-all duration-200
-      focus:outline-none focus:ring-2 focus:ring-vect-violet;
+      text-vect-muted hover:text-vect-text font-medium px-3 py-2 rounded-lg transition-all duration-200
+      focus:outline-none focus:ring-2 focus:ring-vect-accent;
   }
 
   .vect-input {
-    @apply bg-vect-elevated border border-vect-border text-vect-text rounded-xl px-4 py-3
-      focus:outline-none focus:ring-2 focus:ring-vect-violet focus:border-vect-violet
+    @apply bg-vect-elevated border border-vect-border text-vect-text rounded-lg px-4 py-3
+      focus:outline-none focus:ring-2 focus:ring-vect-accent focus:border-vect-accent
       transition-all duration-200 placeholder-vect-subtle w-full;
   }
 
   .vect-textarea {
     @apply bg-vect-elevated border border-vect-border text-vect-text rounded-xl px-4 py-3
-      focus:outline-none focus:ring-2 focus:ring-vect-violet focus:border-vect-violet
+      focus:outline-none focus:ring-2 focus:ring-vect-accent focus:border-vect-accent
       transition-all duration-200 placeholder-vect-subtle w-full resize-none;
-    min-height: 80px;
+    min-height: 52px;
     max-height: 200px;
     overflow-y: auto;
     field-sizing: content;
   }
 
   .mode-btn {
-    @apply flex items-center gap-2.5 w-full text-left px-3 py-2.5 rounded-xl text-sm font-medium
+    @apply flex items-center gap-2.5 w-full text-left px-3 py-2.5 rounded-lg text-sm font-medium
       transition-all duration-150 cursor-pointer select-none;
   }
 
   .mode-btn-active {
-    @apply bg-vect-violet text-white shadow-glow-violet;
+    @apply bg-vect-elevated text-vect-text;
   }
 
   .mode-btn-inactive {
@@ -102,17 +102,17 @@
   }
 
   .message-user {
-    @apply self-end max-w-[85%] md:max-w-[70%] bg-gradient-to-br from-violet-700 to-vect-violet
-      text-white rounded-2xl rounded-br-sm px-5 py-3 shadow-glow-violet animate-fade-in;
+    @apply self-end max-w-[85%] md:max-w-[70%] bg-vect-elevated
+      text-vect-text rounded-2xl rounded-br-sm px-5 py-3 animate-fade-in;
   }
 
   .message-ai {
-    @apply self-start max-w-[85%] md:max-w-[70%] bg-vect-elevated border border-vect-border
+    @apply self-start max-w-[85%] md:max-w-[70%]
       text-vect-text rounded-2xl rounded-bl-sm px-5 py-3 animate-fade-in;
   }
 
   .badge {
-    @apply inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full;
+    @apply inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-md;
   }
 
   .sidebar-label {

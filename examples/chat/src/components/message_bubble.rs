@@ -20,10 +20,10 @@ pub fn message_bubble(props: &MessageBubbleProps) -> Html {
                     </p>
                 </div>
                 <div
-                    class="ml-3 mt-1 w-8 h-8 rounded-full bg-gradient-to-br from-violet-700 to-vect-violet flex items-center justify-center shrink-0 shadow-glow-violet"
+                    class="ml-3 mt-1 w-8 h-8 rounded-full bg-vect-subtle flex items-center justify-center shrink-0"
                     aria-hidden="true"
                 >
-                    <span class="text-white text-xs font-bold">{"U"}</span>
+                    <i class="fa-solid fa-user text-vect-text text-xs" aria-hidden="true"></i>
                 </div>
             </article>
         }
@@ -31,10 +31,10 @@ pub fn message_bubble(props: &MessageBubbleProps) -> Html {
         html! {
             <article class="flex items-start gap-3 mb-5 animate-fade-in" aria-label="Assistant response" aria-live="polite">
                 <div
-                    class="w-8 h-8 rounded-full bg-gradient-to-br from-vect-violet to-vect-cyan flex items-center justify-center shrink-0 shadow-glow-violet mt-1"
+                    class="w-8 h-8 rounded-full bg-vect-accent flex items-center justify-center shrink-0 mt-1"
                     aria-hidden="true"
                 >
-                    <span class="text-white text-xs font-bold">{"V"}</span>
+                    <i class="fa-solid fa-bolt text-white text-xs" aria-hidden="true"></i>
                 </div>
                 <div class="flex flex-col gap-1.5 min-w-0 flex-1">
                     {if let Some(mode) = &props.message.mode {
@@ -60,14 +60,12 @@ pub fn message_bubble(props: &MessageBubbleProps) -> Html {
                                             href={url}
                                             target="_blank"
                                             rel="noopener noreferrer"
-                                            class="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full \
-                                                   bg-vect-violet/10 text-vect-violet-light border border-vect-violet/20 \
-                                                   hover:bg-vect-violet/20 hover:border-vect-violet/40 \
+                                            class="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-md \
+                                                   bg-vect-elevated text-vect-muted border border-vect-border \
+                                                   hover:bg-vect-border hover:text-vect-text \
                                                    transition-all duration-150 max-w-[180px] truncate"
                                         >
-                                            <svg class="w-3 h-3 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                                                <path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
-                                            </svg>
+                                            <i class="fa-solid fa-arrow-up-right-from-square text-[10px] shrink-0" aria-hidden="true"></i>
                                             {title}
                                         </a>
                                     }

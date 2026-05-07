@@ -64,7 +64,7 @@ pub fn input_bar(props: &InputBarProps) -> Html {
                         handle={input_handle}
                         name={"message"}
                         r#ref={input_ref}
-                        placeholder={"Type a seed, text or question... (Enter=send, Shift+Enter=newline)"}
+                        placeholder={"Ask anything..."}
                         input_class={"vect-textarea"}
                         field_class={"w-full"}
                         error_class={""}
@@ -74,7 +74,7 @@ pub fn input_bar(props: &InputBarProps) -> Html {
                     />
                 </div>
                 <button
-                    class="vect-btn-primary h-12 w-12 rounded-xl shrink-0 mb-0.5"
+                    class="vect-btn-primary h-10 w-10 rounded-full shrink-0 mb-0.5"
                     onclick={on_send}
                     disabled={props.is_loading}
                     aria-label="Send message"
@@ -82,14 +82,9 @@ pub fn input_bar(props: &InputBarProps) -> Html {
                     type="button"
                 >
                     if props.is_loading {
-                        <svg class="animate-spin w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
-                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
-                        </svg>
+                        <i class="fa-solid fa-spinner fa-spin text-sm" aria-hidden="true"></i>
                     } else {
-                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
-                        </svg>
+                        <i class="fa-solid fa-arrow-up text-sm" aria-hidden="true"></i>
                     }
                 </button>
             </div>

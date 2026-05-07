@@ -31,3 +31,14 @@ trunk serve --port 3000
 trunk build
 # Output in dist/
 ```
+
+### DuckDuckGo CORS Proxy
+
+By default, the **Ask** feature falls back to **Wikipedia** in production to bypass browser CORS restrictions. To enable full DuckDuckGo search:
+
+1.  Set the URL in `.cargo/config.toml`:
+    ```toml
+    [env]
+    DDG_CORS_PROXY_URL = "https://your-proxy.workers.dev"
+    ```
+1.  Rebuild: `trunk build`
